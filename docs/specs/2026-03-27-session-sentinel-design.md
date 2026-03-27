@@ -528,16 +528,42 @@ This endpoint serves dual purpose:
 
 ---
 
-## 15. Out of Scope (for now)
+## 15. Deployment & Ecosystem Decisions
+
+### Deployment: systemd (not Docker, for now)
+
+Sentinel runs on a single homeserver via systemd, same as the old Gateway. Docker adds complexity (volume mounts for `~/.claude/projects/`, Claude CLI inside container, process spawning) that doesn't solve a real problem today. The architecture (Fastify, SQLite, configurable paths) does not prevent future containerization.
+
+**Future Docker consideration:** When Sentinel is stable and if a Docker Compose setup with Grafana + Jaeger for observability makes sense, containerization becomes a natural sprint issue. Not a blocker for v1.
+
+### Relationship with Claude Karma
+
+Claude Karma is an existing tool that monitors Claude Code sessions with rich detail. During Sentinel's early development, Karma serves as a **fallback for debug** when Sentinel doesn't yet expose enough session detail.
+
+The roadmap:
+1. **Now:** Karma runs alongside Sentinel. Operator uses Karma for deep session debug that Sentinel doesn't cover yet.
+2. **Gradually:** Sentinel incorporates the session detail capabilities that are useful for its mission (agent context, operator visibility).
+3. **Eventually:** Sentinel is self-sufficient. Karma is no longer needed for the Sentinel workflow.
+
+Not everything Karma does is relevant to Sentinel. Sentinel incorporates what serves its mission (session monitoring, context delivery, operator visibility), not the full Karma feature set.
+
+### No existing tool covers this use case
+
+The combination of passive session awareness, agent notification/wake-up, human-agent handoff with ownership tracking, and rich context delivery for agent decision-making does not exist in any current tool. General-purpose orchestrators (n8n, Temporal, Airflow) don't understand coding sessions. Claude Karma monitors but doesn't manage or bridge to agents. The Claude Code SDK is a library, not a service. Sentinel fills this gap.
+
+---
+
+## 16. Out of Scope (for now)
 
 - Multi-vendor agent runtime support (Codex, Gemini CLI) — architecture supports it, implementation is Claude Code only
 - Authentication/authorization on the API — single-user, local network
 - Distributed deployment — single homeserver
+- Docker containerization — systemd for v1, Docker considered when stable
 - MCP server integration — future consideration
 
 ---
 
-## 16. Success Criteria
+## 17. Success Criteria
 
 1. Agent (OpenClaw) can create and resume sessions via API without manual intervention
 2. Agent receives automatic notifications on Discord when managed session needs attention
