@@ -94,6 +94,25 @@ Rules:
 - **Comment on PRs** to record decisions, risks, and context — this becomes the historical record
 - Create follow-up issues when identifying future work, risks, or pending decisions during PR review
 
+### Post-merge cleanup
+
+After every PR merge, run this cleanup to keep the repo clean:
+
+```bash
+# 1. Switch to main and pull latest
+git checkout main && git pull
+
+# 2. Delete the local feature branch (already merged)
+git branch -d <branch-name>
+
+# 3. Prune remote-tracking references to deleted branches
+git fetch --prune
+```
+
+This is mandatory after every merge. No orphan branches should exist locally or remotely.
+
+To audit for stale branches: `git branch --merged main`
+
 ### Issue discipline
 
 One issue at a time. Complete, review, merge, then move to next. Never have two unmerged issues in flight.
