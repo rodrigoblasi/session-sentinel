@@ -14,6 +14,34 @@ A control plane for development agent sessions. It monitors, manages, and broker
 **Today:** Focused on Claude Code sessions.
 **Future:** Extensible to other agent runtimes (Codex, Gemini CLI, etc.). The name and architecture are vendor-agnostic by design.
 
+### Implementation phases
+
+This spec describes the complete product vision. Not everything ships at once. The phases are:
+
+**Phase 1 — Operational Foundation (current focus)**
+- Session Monitor (JSONL watching, discovery, status tracking)
+- Session Manager (create, resume, terminate, housekeeping)
+- REST API with rich context delivery
+- SQLite persistence
+- Dashboard (overview table + drill-down)
+- Basic notification via existing agent-notify.sh script
+
+**Phase 2 — Agent Integration Refinement**
+- Notification payload tuning based on real agent usage
+- Agent decision flowcharts in CLAUDE.md (how to interpret and act on notifications)
+- Sub-agent hierarchy in API responses
+- GET /report endpoint refinement based on operator feedback
+- OpenAPI spec and formal agent documentation
+
+**Phase 3 — Maturity**
+- OpenTelemetry full integration
+- Advanced housekeeping rules (per-project thresholds, concurrent limits)
+- Dashboard actions and real-time polish
+- Potential Docker deployment
+- Potential multi-runtime support
+
+Features described in this spec that belong to Phase 2 or 3 are **design targets**, not Phase 1 deliverables. The exact scope of each phase will be refined during sprint planning. Agents and developers reading this spec should focus on Phase 1 capabilities for initial integration.
+
 ### Core responsibilities
 
 1. **Monitor** — Observes all Claude Code sessions passively via JSONL filesystem watching. Never interferes with unmanaged sessions.
@@ -167,6 +195,7 @@ Session Monitor
 | last_output | TEXT | Last relevant result text |
 | error_message | TEXT | Error string if status=error |
 | can_resume | BOOLEAN | Whether session can be resumed |
+| parent_session_id | TEXT | If this is a sub-agent session, references the parent session ID. NULL for top-level sessions. (Phase 2 — depends on Sprint 0 sub-agent investigation) |
 | created_at | DATETIME | Session first seen |
 | updated_at | DATETIME | Last activity |
 | ended_at | DATETIME | When session ended |
@@ -253,7 +282,10 @@ The notification already includes hints so the agent knows what to investigate:
 - Status that triggered the notification (waiting, error)
 - Project name and branch
 - Brief context (pending question for waiting, error message for error)
+- `waiting_since` — ISO timestamp of when the session entered waiting state. Gives the agent time awareness.
 - API endpoint to get full details
+
+**Important clarification on timing:** A session in `waiting` status is NOT subject to idle auto-kill. Idle auto-kill applies only to sessions with no JSONL activity — a waiting session is alive and waiting for input, which is a valid state. The agent does not need to rush to prevent auto-termination. The `waiting_since` field is for awareness, not urgency.
 
 ### Delivery mechanism
 
@@ -298,13 +330,15 @@ Uses existing `agent-notify.sh` script from the OpenClaw ecosystem. Script to be
 
 ### Rich session detail (GET /sessions/:id)
 
-Response includes five context blocks:
+Response includes seven context blocks:
 
 1. **Identity** — id, label, project, cwd, branch, model, effort
-2. **Current state** — status, pending_question, error_message, last_output, can_resume
-3. **Project context** — other sessions in same project, today's project activity
-4. **Session history** — runs timeline (who operated, when, tokens), recent transcript
-5. **Available actions** — what the agent can do now (send_message, resume, terminate), resume CLI command for operator
+2. **Current state** — status, pending_question, error_message, last_output, can_resume, waiting_since (ISO timestamp if status=waiting)
+3. **Question context** — when status=waiting, includes the last N transcript turns leading up to the question (not just the question string). This gives the agent enough context to understand what was being discussed before the question was asked, without requiring a separate transcript call.
+4. **Project context** — other sessions in same project, today's project activity
+5. **Session history** — runs timeline (who operated, when, tokens), recent transcript
+6. **Hierarchy** (Phase 2) — parent_session_id if this is a sub-agent, children[] if this session spawned sub-agents. Helps the agent understand whether it's looking at a root task or a delegated subtask.
+7. **Available actions** — what the agent can do now (send_message, resume, terminate), resume CLI command for operator
 
 ### Environment report (GET /report)
 
