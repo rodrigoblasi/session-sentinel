@@ -702,6 +702,8 @@ Tool results appear as `user` events with `toolUseResult` field set and `sourceT
 
 ### 7.1 Resume Signals
 
+> **Note: These are hypotheses, not confirmed findings.** Task 3 (Resume & Session Identity investigation) has not yet run. The signals below are inferred from JSONL structure analysis and have not been validated against real resume scenarios.
+
 When a session is resumed:
 1. A new set of `progress/hook_progress` events with `hookEvent: "SessionStart"` appears
 2. A new `system:bridge_status` event may appear (new Remote URL)

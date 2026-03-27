@@ -129,7 +129,7 @@ for (const filePath of jsonlFiles) {
       catalog.set(key, {
         count: 0,
         topLevelKeys: new Set(),
-        sample: truncate(JSON.stringify(obj, null, 2), MAX_SAMPLE_LENGTH),
+        sample: obj,
       });
     }
 
@@ -161,7 +161,7 @@ if (jsonOutput) {
     result[key] = {
       count: entry.count,
       topLevelKeys: [...entry.topLevelKeys].sort(),
-      sample: JSON.parse(entry.sample.replace(/\.\.\. \[truncated\]$/, "} // truncated") || "{}"),
+      sample: entry.sample,
     };
   }
   console.log(JSON.stringify(result, null, 2));
@@ -224,7 +224,7 @@ for (const [key, entry] of sorted) {
   console.log(`  Top-level keys: ${[...entry.topLevelKeys].sort().join(", ")}`);
   console.log(`  Sample:`);
   // Indent sample
-  const sampleLines = entry.sample.split("\n");
+  const sampleLines = truncate(JSON.stringify(entry.sample, null, 2), MAX_SAMPLE_LENGTH).split("\n");
   for (const sl of sampleLines) {
     console.log(`    ${sl}`);
   }

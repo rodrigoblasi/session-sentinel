@@ -111,7 +111,8 @@ for (const evt of events) {
     evt.type === "user" &&
     !evt.isSidechain &&
     !evt.toolUseResult &&
-    !evt.sourceToolUseID;
+    !evt.sourceToolUseID &&
+    !evt.isCompactSummary;
 
   if (isRealUserMessage) {
     currentTurn = {
