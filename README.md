@@ -2,7 +2,23 @@
 
 > Control plane for development agent sessions
 
-Session Sentinel monitors, manages, and brokers interactions between human operators, AI agents, and coding sessions. It acts as the central nervous system for multi-agent development workflows — knowing what every session is doing, notifying agents when action is needed, and giving operators full visibility through a real-time dashboard.
+**Early stage — actively being built and used in production.**
+
+Session Sentinel is a middleware that sits between AI coding tools and the agents/humans that operate them. It monitors sessions, manages their lifecycle, notifies agents when action is needed, and gives operators a real-time dashboard to see everything that's happening.
+
+The idea is simple: as AI coding tools become part of the daily workflow, someone needs to be the middleman — watching all the sessions, knowing when something needs attention, and making it easy for agents and humans to collaborate on the work. That's what Sentinel does.
+
+### Current focus
+
+We're starting with **Claude Code** because that's what we use daily. But the architecture is intentionally generic — Sentinel doesn't care what tool created the session, it cares about the session's state, its lifecycle, and who needs to know about it.
+
+### Future vision
+
+The long-term goal is for Sentinel to be the **universal control plane** for any AI coding tool — Claude Code, Gemini CLI, Codex, or whatever comes next. A single place where all your agent sessions are visible, manageable, and connected to your workflow, regardless of which tool powers them.
+
+### Want to help?
+
+If you're using Gemini CLI, Codex, or another AI coding tool and want to integrate it with Sentinel — contributions are very welcome. The design is built to support multiple runtimes. Check the [Design Spec](docs/specs/2026-03-27-session-sentinel-design.md) for the architecture and open an issue to discuss your integration idea.
 
 ---
 
@@ -149,22 +165,35 @@ curl sentinel:5000/report
 
 ## Project Status
 
-**Phase:** Design complete, implementation starting
+**Phase:** Design complete, implementation starting. This is an early-stage project — the design is solid but the code is being written.
 
 - [Design Spec](docs/specs/2026-03-27-session-sentinel-design.md) — Full architecture, data model, API design, and requirements
 - [Kanban Board](https://github.com/users/rodrigoblasi/projects/3) — Sprint planning and progress tracking
+
+What's ready:
+- Complete design spec with architecture, data model, API, and requirements
+- GitHub repo with labels, Kanban board, and workflow conventions
+- Lessons learned from the proof-of-concept predecessor
+
+What's next:
+- Sprint 0: SDK investigation and JSONL format study
+- Sprint 1: Core modules (Monitor, Manager, API)
+- Sprint 2+: Dashboard, notifications, and refinement
 
 ---
 
 ## Background
 
-Session Sentinel is a ground-up rewrite of [Claude Code Gateway](https://github.com/rodrigoblasi/Claude-Code-Gateway), which served as the proof of concept. Key lessons from the Gateway informed this design:
+Session Sentinel evolved from [Claude Code Gateway](https://github.com/rodrigoblasi/Claude-Code-Gateway), a proof of concept that validated the core idea: agents need a broker to interact with coding sessions. The Gateway worked, but its limitations (one-shot session mode, manual notification setup, flat session model) showed what a production version needs to get right.
+
+Key lessons that shaped this design:
 
 - Interactive sessions (not one-shot `--print` mode) are essential for real agent interaction
 - Notifications must be automatic, not manually configured per session
 - Session identity must survive resumes and handoffs (the Session + Runs model)
 - The API must deliver rich context so agents can decide efficiently
 - The dashboard needs both a bird's-eye view and deep drill-down capability
+- The tool should be generic enough to support multiple AI coding runtimes in the future
 
 ---
 
