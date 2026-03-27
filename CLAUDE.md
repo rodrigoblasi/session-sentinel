@@ -59,10 +59,118 @@ The full design is in `docs/specs/2026-03-27-session-sentinel-design.md`. Read i
 
 ## GitHub workflow
 
+### Source of truth
+
 - **Issues** are the source of truth. Every change traces to an issue.
 - **Planning:** GitHub Projects (Kanban view)
 - **CI/CD:** GitHub Actions
-- One issue at a time. Complete, review, merge, then next.
+
+### Branch strategy
+
+**No direct commits to `main`.** All work goes through branches and PRs.
+
+| Branch pattern | Purpose | Example |
+|----------------|---------|---------|
+| `main` | Always deployable. Protected. | — |
+| `feat/N-short-description` | New feature from issue #N | `feat/12-session-monitor` |
+| `fix/N-short-description` | Bug fix from issue #N | `fix/15-stale-detection` |
+| `chore/N-short-description` | Infra, deps, CI from issue #N | `chore/8-github-actions` |
+| `docs/N-short-description` | Documentation from issue #N | `docs/3-agent-guide` |
+| `spike/N-short-description` | Investigation/spike from issue #N | `spike/1-jsonl-study` |
+
+Rules:
+- Branch name always includes the issue number
+- One branch per issue. One issue per branch.
+- Branch is deleted after merge.
+- PR title follows commit convention: `feat(scope): description — closes #N`
+
+### Pull Requests
+
+- Every PR requires a description with: what changed, why, how to test
+- PR must reference the issue it closes: `closes #N` in the body
+- Merge strategy: **squash merge** to keep main history clean
+- After merge, the Kanban card moves to Done automatically
+
+### Issue discipline
+
+One issue at a time. Complete, review, merge, then move to next. Never have two unmerged issues in flight.
+
+### GitHub Labels
+
+Issues and PRs must use labels consistently:
+
+**Type labels (required — every issue has exactly one):**
+
+| Label | Color | Description |
+|-------|-------|-------------|
+| `type: feature` | `#1d76db` | New functionality |
+| `type: bug` | `#d73a4a` | Something broken |
+| `type: spike` | `#d4c5f9` | Investigation/research, no deliverable code |
+| `type: chore` | `#ededed` | Infra, deps, CI, config |
+| `type: docs` | `#0075ca` | Documentation |
+| `type: refactor` | `#f9d0c4` | Code improvement, no behavior change |
+
+**Module labels (required — what part of the system):**
+
+| Label | Color | Description |
+|-------|-------|-------------|
+| `module: monitor` | `#4ade80` | Session Monitor (JSONL watching, discovery) |
+| `module: manager` | `#60a5fa` | Session Manager (spawn, resume, kill, housekeep) |
+| `module: bridge` | `#facc15` | Agent Bridge (notifications, context delivery) |
+| `module: api` | `#c084fc` | REST API / WebSocket |
+| `module: dashboard` | `#f472b6` | SvelteKit UI |
+| `module: infra` | `#8899aa` | CI/CD, deploy, config, observability |
+| `module: docs` | `#0075ca` | Documentation, agent guide, OpenAPI spec |
+
+**Priority labels (required):**
+
+| Label | Color | Description |
+|-------|-------|-------------|
+| `priority: critical` | `#b60205` | Blocks everything, fix now |
+| `priority: high` | `#d93f0b` | Current sprint, do next |
+| `priority: medium` | `#fbca04` | Planned, not urgent |
+| `priority: low` | `#0e8a16` | Nice to have, backlog |
+
+**Sprint labels:**
+
+| Label | Color | Description |
+|-------|-------|-------------|
+| `sprint: 0` | `#e8e8e8` | Investigation / setup |
+| `sprint: 1` | `#e8e8e8` | Core foundation |
+| `sprint: 2` | `#e8e8e8` | (defined during planning) |
+| `sprint: 3` | `#e8e8e8` | (defined during planning) |
+
+**Status labels (for visibility on issues not yet on the board):**
+
+| Label | Color | Description |
+|-------|-------|-------------|
+| `status: blocked` | `#b60205` | Waiting on dependency or decision |
+| `status: needs-spec` | `#fbca04` | Needs more detail before implementation |
+| `status: ready` | `#0e8a16` | Fully specified, ready to pick up |
+
+### GitHub Project (Kanban)
+
+Board columns:
+
+| Column | What goes here |
+|--------|---------------|
+| **Backlog** | Issues created but not in current sprint |
+| **Sprint** | Issues planned for current sprint |
+| **In Progress** | Someone is actively working on this |
+| **In Review** | PR open, awaiting review |
+| **Done** | Merged and closed |
+
+### Issue quality standards
+
+Every issue must have:
+- Clear title (what changes)
+- Context (why this change is needed)
+- Implementation notes (how — specific files, types, logic)
+- Acceptance criteria (testable, specific)
+- Labels: type + module + priority + sprint
+- Dependencies (which issues must merge first)
+
+If an issue is missing these, **enrich it before starting**.
 
 ### Commit conventions
 
@@ -72,7 +180,10 @@ fix(scope): fix Y — closes #N
 perf(scope): optimize Z
 docs(scope): document W
 chore: bump version / update deps
+spike(scope): investigate X — closes #N
 ```
+
+Scope matches module names: `monitor`, `manager`, `bridge`, `api`, `dashboard`, `infra`, `docs`.
 
 ---
 
