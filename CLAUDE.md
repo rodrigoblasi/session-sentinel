@@ -64,6 +64,7 @@ The full design is in `docs/specs/2026-03-27-session-sentinel-design.md`. Read i
 - **Issues** are the source of truth. Every change traces to an issue.
 - **Planning:** GitHub Projects (Kanban view)
 - **CI/CD:** GitHub Actions
+- **GitHub is the conversation channel for history.** Everything recorded there (PRs, issues, comments) is a taken decision. Decisions not documented on GitHub are lost between sessions.
 
 ### Branch strategy
 
@@ -90,6 +91,8 @@ Rules:
 - PR must reference the issue it closes: `closes #N` in the body
 - Merge strategy: **squash merge** to keep main history clean
 - After merge, the Kanban card moves to Done automatically
+- **Comment on PRs** to record decisions, risks, and context — this becomes the historical record
+- Create follow-up issues when identifying future work, risks, or pending decisions during PR review
 
 ### Issue discipline
 
