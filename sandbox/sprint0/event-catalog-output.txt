@@ -1,0 +1,456 @@
+================================================================================
+  JSONL Event Catalog — Session Sentinel Sprint 0
+================================================================================
+
+Scan date:       2026-03-27T15:23:27.491Z
+Projects dir:    /home/blasi/.claude/projects
+Project filter:  (all)
+Files scanned:   78
+Total lines:     22752
+Parse errors:    0
+Event types:     19
+
+--------------------------------------------------------------------------------
+  EVENT TYPE SUMMARY
+--------------------------------------------------------------------------------
+
+Event Type                                  Count % of Total
+──────────────────────────────────────── ──────── ──────────
+progress/hook_progress                       7531      33.1%
+assistant                                    6106      26.8%
+user                                         4286      18.8%
+progress/agent_progress                      2874      12.6%
+file-history-snapshot                         679       3.0%
+system:stop_hook_summary                      413       1.8%
+queue-operation                               376       1.7%
+system:turn_duration                          233       1.0%
+system:api_error                               99       0.4%
+last-prompt                                    64       0.3%
+system:bridge_status                           46       0.2%
+pr-link                                        33       0.1%
+system:compact_boundary                         3       0.0%
+system:local_command                            2       0.0%
+custom-title                                    2       0.0%
+agent-name                                      2       0.0%
+progress/waiting_for_task                       1       0.0%
+progress/query_update                           1       0.0%
+progress/search_results_received                1       0.0%
+
+--------------------------------------------------------------------------------
+  COMMON FIELDS (present in >50% of events)
+--------------------------------------------------------------------------------
+
+  type                              22752 (100.0%)
+  sessionId                         22073 (97.0%)
+  timestamp                         22005 (96.7%)
+  parentUuid                        21596 (94.9%)
+  isSidechain                       21596 (94.9%)
+  uuid                              21596 (94.9%)
+  userType                          21596 (94.9%)
+  entrypoint                        21596 (94.9%)
+  cwd                               21596 (94.9%)
+  version                           21596 (94.9%)
+  gitBranch                         21596 (94.9%)
+  slug                              20925 (92.0%)
+
+--------------------------------------------------------------------------------
+  DETAILED EVENT CATALOG
+--------------------------------------------------------------------------------
+
+==== progress/hook_progress ==================================================
+  Count: 7531
+  Top-level keys: cwd, data, entrypoint, gitBranch, isSidechain, parentToolUseID, parentUuid, sessionId, slug, timestamp, toolUseID, type, userType, uuid, version
+  Sample:
+    {
+      "parentUuid": null,
+      "isSidechain": false,
+      "type": "progress",
+      "data": {
+        "type": "hook_progress",
+        "hookEvent": "SessionStart",
+        "hookName": "SessionStart:startup",
+        "command": "bd prime"
+      },
+      "parentToolUseID": "08d8fbfa-0223-4d6d-b6ce-6c7ccc52d2d7",
+      "toolUseID": "08d8fbfa-0223-4d6d-b6ce-6c7ccc52d2d7",
+      "timestamp": "2026-03-21T22:58:24.636Z",
+      "uuid": "165c26b1-7f8a-4ab0-9d9d-f6d72350eb75",
+      "userType": "external",
+      "entrypoint": "cli",
+      "cwd": "/home/blasi/.openclaw/tmp/gateway-consultation",
+      "sessionId": "0b14049f-72dd-48cc-abbf-55e9e0002c88",
+      "version": ... [truncated]
+
+==== assistant ===============================================================
+  Count: 6106
+  Top-level keys: cwd, entrypoint, error, gitBranch, isApiErrorMessage, isSidechain, message, parentUuid, requestId, sessionId, slug, timestamp, type, userType, uuid, version
+  Sample:
+    {
+      "parentUuid": "04d76980-040a-4ee8-9a47-20d112c62ade",
+      "isSidechain": false,
+      "message": {
+        "model": "claude-opus-4-6",
+        "id": "msg_017U9abJ4tZApqujfn1UkpFy",
+        "type": "message",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "thinking",
+            "thinking": "",
+            "signature": "Es0FCkYICxgCKkCrPCjlc1Uu9RMLUv7bjZaqdbQEINr0dZCwiqFdVI8ccePC91M21xzi/LQWoR7qY3jiqcdzLAGlRYBdVrhpPMdwEgzAzy0xAPs0h/pzPW0aDCD9ASHnBsxJNgmOHiIw+h8PPC3D2XhCAcvXlliLJd9DlfKLtm+oxEOnEPIdwWyJ4EUpi3UhL1gvji738W/TKrQEKPxMXW7cf8TrJ7Op+IFd+eED4+fCI7rk0oFeI4D5NuB8KQUI5bN/+v96DYqZpGA0zm8uZOiH84... [truncated]
+
+==== user ====================================================================
+  Count: 4286
+  Top-level keys: cwd, entrypoint, gitBranch, isCompactSummary, isMeta, isSidechain, isVisibleInTranscriptOnly, message, parentUuid, permissionMode, promptId, sessionId, slug, sourceToolAssistantUUID, sourceToolUseID, timestamp, toolUseResult, type, userType, uuid, version
+  Sample:
+    {
+      "parentUuid": "5f0ec14a-1db1-4f41-95c1-1f601a884bec",
+      "isSidechain": false,
+      "promptId": "28262861-04a4-47df-af2f-22dbd420d3ad",
+      "type": "user",
+      "message": {
+        "role": "user",
+        "content": "Read CLAUDE.md in this directory. It contains the full context of what we're building and the questions we need answered.\n\nThis is a consultation session. Your role is senior engineer / technical reviewer. Be critical. Be honest. Don't validate — evaluate.\n\nAfter reading CLAUDE.md, provide your assessment of:\n1. Whether --sdk-url is the right approach or if there's a better alternative\n... [truncated]
+
+==== progress/agent_progress =================================================
+  Count: 2874
+  Top-level keys: cwd, data, entrypoint, gitBranch, isSidechain, parentToolUseID, parentUuid, sessionId, slug, timestamp, toolUseID, type, userType, uuid, version
+  Sample:
+    {
+      "parentUuid": "c6b54d83-9e5e-4c64-9a03-c5e9e467ec6f",
+      "isSidechain": false,
+      "type": "progress",
+      "data": {
+        "message": {
+          "type": "user",
+          "message": {
+            "role": "user",
+            "content": [
+              {
+                "type": "text",
+                "text": "I need a thorough technical comparison of three ways to programmatically control Claude Code:\n\n1. **Claude Code SDK** (TypeScript/Python library) — What does it offer? How does session management work? Can you maintain persistent multi-turn conversations? What's the API surface? Does it handle spawning Claude Code pr... [truncated]
+
+==== file-history-snapshot ===================================================
+  Count: 679
+  Top-level keys: isSnapshotUpdate, messageId, snapshot, type
+  Sample:
+    {
+      "type": "file-history-snapshot",
+      "messageId": "04d76980-040a-4ee8-9a47-20d112c62ade",
+      "snapshot": {
+        "messageId": "04d76980-040a-4ee8-9a47-20d112c62ade",
+        "trackedFileBackups": {},
+        "timestamp": "2026-03-21T22:58:49.925Z"
+      },
+      "isSnapshotUpdate": false
+    }
+
+==== system:stop_hook_summary ================================================
+  Count: 413
+  Top-level keys: cwd, entrypoint, gitBranch, hasOutput, hookCount, hookErrors, hookInfos, isSidechain, level, parentUuid, preventedContinuation, sessionId, slug, stopReason, subtype, timestamp, toolUseID, type, userType, uuid, version
+  Sample:
+    {
+      "parentUuid": "8d2f9540-6211-4947-bea8-543f98cd49ef",
+      "isSidechain": false,
+      "type": "system",
+      "subtype": "stop_hook_summary",
+      "hookCount": 2,
+      "hookInfos": [
+        {
+          "command": "python3 ~/.claude/hooks/live_session_tracker.py",
+          "durationMs": 72
+        },
+        {
+          "command": "~/.tmux/plugins/tmux-agent-status/hooks/better-hook.sh Stop",
+          "durationMs": 25
+        }
+      ],
+      "hookErrors": [],
+      "preventedContinuation": false,
+      "stopReason": "",
+      "hasOutput": false,
+      "level": "suggestion",
+      "timestamp": "2026-03-21T23:02:46.023Z",
+      "uuid": "1533c24f-69c0-4098-9265-73d032... [truncated]
+
+==== queue-operation =========================================================
+  Count: 376
+  Top-level keys: content, operation, sessionId, timestamp, type
+  Sample:
+    {
+      "type": "queue-operation",
+      "operation": "enqueue",
+      "timestamp": "2026-03-21T20:23:31.871Z",
+      "sessionId": "0093145a-e22b-4b95-aa40-854530318e2d",
+      "content": "What is 2+2? Reply with just the number."
+    }
+
+==== system:turn_duration ====================================================
+  Count: 233
+  Top-level keys: cwd, durationMs, entrypoint, gitBranch, isMeta, isSidechain, messageCount, parentUuid, sessionId, slug, subtype, timestamp, type, userType, uuid, version
+  Sample:
+    {
+      "parentUuid": "1533c24f-69c0-4098-9265-73d03256874c",
+      "isSidechain": false,
+      "type": "system",
+      "subtype": "turn_duration",
+      "durationMs": 236095,
+      "timestamp": "2026-03-21T23:02:46.025Z",
+      "uuid": "bc1de1a0-d565-4785-bb5e-06a35e8a234b",
+      "isMeta": false,
+      "userType": "external",
+      "entrypoint": "cli",
+      "cwd": "/home/blasi/.openclaw/tmp/gateway-consultation",
+      "sessionId": "0b14049f-72dd-48cc-abbf-55e9e0002c88",
+      "version": "2.1.81",
+      "gitBranch": "HEAD",
+      "slug": "pure-meandering-nova"
+    }
+
+==== system:api_error ========================================================
+  Count: 99
+  Top-level keys: cwd, entrypoint, error, gitBranch, isSidechain, level, maxRetries, parentUuid, retryAttempt, retryInMs, sessionId, slug, subtype, timestamp, type, userType, uuid, version
+  Sample:
+    {
+      "parentUuid": "cfe5f32c-6a6c-471d-b553-5a6e147eb56b",
+      "isSidechain": false,
+      "type": "system",
+      "subtype": "api_error",
+      "level": "error",
+      "error": {
+        "status": 529,
+        "headers": {
+          "date": "Fri, 27 Mar 2026 08:49:40 GMT",
+          "content-type": "application/json",
+          "transfer-encoding": "chunked",
+          "connection": "keep-alive",
+          "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+          "content-encoding": "gzip",
+          "vary": "Accept-Encoding",
+          "server-timing": "x-originResponse;dur=106",
+          "content-security-policy": "default... [truncated]
+
+==== last-prompt =============================================================
+  Count: 64
+  Top-level keys: lastPrompt, sessionId, type
+  Sample:
+    {
+      "type": "last-prompt",
+      "lastPrompt": "Read CLAUDE.md in this directory. It contains the full context of what we're building and the questions we need answered.  This is a consultation session. Your role is senior engineer / technical revi…",
+      "sessionId": "0b14049f-72dd-48cc-abbf-55e9e0002c88"
+    }
+
+==== system:bridge_status ====================================================
+  Count: 46
+  Top-level keys: content, cwd, entrypoint, gitBranch, isMeta, isSidechain, parentUuid, sessionId, slug, subtype, timestamp, type, upgradeNudge, url, userType, uuid, version
+  Sample:
+    {
+      "parentUuid": "38fb721b-8546-4e3c-a4e3-3893695dcc6d",
+      "isSidechain": false,
+      "type": "system",
+      "subtype": "bridge_status",
+      "content": "/remote-control is active. Code in CLI or at https://claude.ai/code/session_01KVGAz1DqZhkKrbZvPW9FJC",
+      "url": "https://claude.ai/code/session_01KVGAz1DqZhkKrbZvPW9FJC",
+      "isMeta": false,
+      "timestamp": "2026-03-21T22:58:25.538Z",
+      "uuid": "5f0ec14a-1db1-4f41-95c1-1f601a884bec",
+      "userType": "external",
+      "entrypoint": "cli",
+      "cwd": "/home/blasi/.openclaw/tmp/gateway-consultation",
+      "sessionId": "0b14049f-72dd-48cc-abbf-55e9e0002c88",
+      "versi... [truncated]
+
+==== pr-link =================================================================
+  Count: 33
+  Top-level keys: prNumber, prRepository, prUrl, sessionId, timestamp, type
+  Sample:
+    {
+      "type": "pr-link",
+      "sessionId": "0c47fcf6-05b7-4e0e-b3f8-9834cd5b3621",
+      "prNumber": 181,
+      "prUrl": "https://github.com/rodrigoblasi/finance.blasi/pull/181",
+      "prRepository": "rodrigoblasi/finance.blasi",
+      "timestamp": "2026-03-23T04:21:48.109Z"
+    }
+
+==== system:compact_boundary =================================================
+  Count: 3
+  Top-level keys: compactMetadata, content, cwd, entrypoint, gitBranch, isMeta, isSidechain, level, logicalParentUuid, parentUuid, sessionId, slug, subtype, timestamp, type, userType, uuid, version
+  Sample:
+    {
+      "parentUuid": null,
+      "logicalParentUuid": "7a7bf5a4-5923-45db-a775-fa80f34833a5",
+      "isSidechain": false,
+      "type": "system",
+      "subtype": "compact_boundary",
+      "content": "Conversation compacted",
+      "isMeta": false,
+      "timestamp": "2026-03-27T14:38:24.286Z",
+      "uuid": "af026e15-8b68-4dc9-9785-897ebd106fa3",
+      "level": "info",
+      "compactMetadata": {
+        "trigger": "manual",
+        "preTokens": 177039,
+        "preCompactDiscoveredTools": [
+          "TaskCreate",
+          "TaskList",
+          "TaskUpdate",
+          "WebFetch"
+        ]
+      },
+      "userType": "external",
+      "entrypoint": "cli",
+      "cwd": "/home/blasi/c... [truncated]
+
+==== system:local_command ====================================================
+  Count: 2
+  Top-level keys: content, cwd, entrypoint, gitBranch, isMeta, isSidechain, level, parentUuid, sessionId, subtype, timestamp, type, userType, uuid, version
+  Sample:
+    {
+      "parentUuid": "1307c347-0678-493d-a3ff-beb6e4b090b6",
+      "isSidechain": false,
+      "type": "system",
+      "subtype": "local_command",
+      "content": "<local-command-stdout>Reloaded: 2 plugins · 3 skills · 6 agents · 1 hook · 1 plugin MCP server · 0 plugin LSP servers</local-command-stdout>",
+      "level": "info",
+      "timestamp": "2026-03-27T08:49:16.011Z",
+      "uuid": "6c2fa0da-0a0c-4a79-becc-d9d7547b623e",
+      "isMeta": false,
+      "userType": "external",
+      "entrypoint": "cli",
+      "cwd": "/home/blasi/claude_code_gateway",
+      "sessionId": "b0f02f71-e639-49d5-94ae-a1a6c3c2954a",
+      "version": "2.1.85",
+      "gitBra... [truncated]
+
+==== custom-title ============================================================
+  Count: 2
+  Top-level keys: customTitle, sessionId, type
+  Sample:
+    {
+      "type": "custom-title",
+      "customTitle": "rename-enrichment-landscape-docs",
+      "sessionId": "26ad1495-e2e7-481a-ad00-7197df1f3183"
+    }
+
+==== agent-name ==============================================================
+  Count: 2
+  Top-level keys: agentName, sessionId, type
+  Sample:
+    {
+      "type": "agent-name",
+      "agentName": "rename-enrichment-landscape-docs",
+      "sessionId": "26ad1495-e2e7-481a-ad00-7197df1f3183"
+    }
+
+==== progress/waiting_for_task ===============================================
+  Count: 1
+  Top-level keys: cwd, data, entrypoint, gitBranch, isSidechain, parentToolUseID, parentUuid, sessionId, slug, timestamp, toolUseID, type, userType, uuid, version
+  Sample:
+    {
+      "parentUuid": "143f0791-6081-4c66-93f5-7c79e94032c6",
+      "isSidechain": false,
+      "type": "progress",
+      "data": {
+        "type": "waiting_for_task",
+        "taskDescription": "Push feature branch",
+        "taskType": "local_bash"
+      },
+      "toolUseID": "task-output-waiting-1774129168131",
+      "parentToolUseID": "toolu_01GbAGXhbgMFckEss7CueqEa",
+      "uuid": "0083c1fa-7955-4f2f-896f-3631f6dff747",
+      "timestamp": "2026-03-21T21:39:28.131Z",
+      "userType": "external",
+      "entrypoint": "cli",
+      "cwd": "/home/blasi/finance.blasi/development",
+      "sessionId": "41ed5559-fdc4-4fbc-aa1a-905752817adc",
+      "version": "2.1.... [truncated]
+
+==== progress/query_update ===================================================
+  Count: 1
+  Top-level keys: cwd, data, entrypoint, gitBranch, isSidechain, parentToolUseID, parentUuid, sessionId, slug, timestamp, toolUseID, type, userType, uuid, version
+  Sample:
+    {
+      "parentUuid": "8efa96c6-0a7c-460c-9e1c-11f83cf07f08",
+      "isSidechain": false,
+      "type": "progress",
+      "data": {
+        "type": "query_update",
+        "query": "Claude API down overloaded today March 2026"
+      },
+      "toolUseID": "search-progress-1",
+      "parentToolUseID": "toolu_01FSfRYHz44f4LjLx6bu9jn5",
+      "uuid": "df259898-9176-4dad-a769-59a8f7d6a9bf",
+      "timestamp": "2026-03-25T20:29:45.513Z",
+      "userType": "external",
+      "entrypoint": "cli",
+      "cwd": "/home/blasi/openclaw_helper",
+      "sessionId": "e9cf2c7b-4e6f-411c-b861-3d78e2ff6920",
+      "version": "2.1.83",
+      "gitBranch": "HEAD",
+      "slug": "reflect... [truncated]
+
+==== progress/search_results_received ========================================
+  Count: 1
+  Top-level keys: cwd, data, entrypoint, gitBranch, isSidechain, parentToolUseID, parentUuid, sessionId, slug, timestamp, toolUseID, type, userType, uuid, version
+  Sample:
+    {
+      "parentUuid": "8efa96c6-0a7c-460c-9e1c-11f83cf07f08",
+      "isSidechain": false,
+      "type": "progress",
+      "data": {
+        "type": "search_results_received",
+        "resultCount": 10,
+        "query": "Claude API down overloaded today March 2026"
+      },
+      "toolUseID": "srvtoolu_019Sw5HJRNLuxsYQDkS6KV6z",
+      "parentToolUseID": "toolu_01FSfRYHz44f4LjLx6bu9jn5",
+      "uuid": "b8385969-18ef-4d30-ac21-1122e68f1b4b",
+      "timestamp": "2026-03-25T20:29:47.261Z",
+      "userType": "external",
+      "entrypoint": "cli",
+      "cwd": "/home/blasi/openclaw_helper",
+      "sessionId": "e9cf2c7b-4e6f-411c-b861-3d78e2ff6920",
+      "version": "... [truncated]
+
+--------------------------------------------------------------------------------
+  SESSION SUMMARY (per file)
+--------------------------------------------------------------------------------
+
+Session ID                               Project                         Lines Slug
+──────────────────────────────────────── ────────────────────────────── ────── ──────────────────────────────
+93f9adb8-b272-4e3b-89b4-77c2491cca8e     -home-blasi-finance-blasi-de..   2140 sleepy-swimming-metcalfe
+37779cfd-f5a5-411e-a277-51157228ba5c     -home-blasi-wow-basic-auctio..   1149 jazzy-sniffing-zebra
+c381c673-23a9-418f-91b4-9c905ccc76d0     -home-blasi-finance-blasi-de..    998 adaptive-waddling-dove
+defb1958-1b13-4ae8-8a6a-db4b10de67d9     -home-blasi-openclaw-helper       923 spicy-juggling-ripple
+f5fa7b16-acd6-44c0-bc7f-d715c422495a     -home-blasi-wow-basic-auctio..    906 zany-cuddling-platypus
+fa52c6bb-b1a7-44b3-8ff1-75292056294d     -home-blasi-claude-code-gate..    841 scalable-hatching-music
+c4ddf289-2aff-4a4b-88ed-5f172d0a065e     -home-blasi-finance-blasi-de..    825 crystalline-wishing-lake
+9fdc4da1-4cee-41d0-b5cb-55b973c2173f     -home-blasi-finance-blasi-de..    802 dazzling-frolicking-pillow
+0c47fcf6-05b7-4e0e-b3f8-9834cd5b3621     -home-blasi-finance-blasi-de..    737 luminous-hugging-nebula
+a2548377-926f-4426-b926-72b78d5664b6     -home-blasi-finance-blasi-de..    719 shimmering-petting-neumann
+12c31316-449a-4ba6-9ee4-9a7dda10661f     -home-blasi-finance-blasi-de..    660 silly-percolating-hamster
+26ad1495-e2e7-481a-ad00-7197df1f3183     -home-blasi-finance-blasi-de..    658 synchronous-dreaming-trinket
+2b239f9b-27be-4afb-a336-b095f56431a4     -home-blasi-wow-basic-auctio..    626 bubbly-moseying-nebula
+172f1b6d-4cf3-4c90-ac03-c20f4329ff7b     -home-blasi-finance-blasi-de..    562 foamy-wondering-llama
+318d3967-9d3a-4fa5-844b-a4cc1a06f5d0     -home-blasi-finance-blasi-de..    541 cheeky-wobbling-truffle
+fbaefe08-4881-4455-b8dd-efac1c77e9c6     -home-blasi-finance-blasi-de..    541 gleaming-cuddling-dragon
+0ae38a42-80dd-43fd-b676-6a80c2c4b321     -home-blasi-finance-blasi-de..    511 joyful-exploring-allen
+d50d8fbb-e350-4b43-94a6-c680927fb477     -home-blasi-openclaw-helper       505 immutable-spinning-whistle
+9282eead-f89f-475d-b387-d792f68b8268     -home-blasi-finance-blasi-de..    481 moonlit-purring-fountain
+a4a6a3ad-d96f-4a31-905c-553dcaafe304     -home-blasi-finance-blasi-de..    437 composed-chasing-pascal
+41ed5559-fdc4-4fbc-aa1a-905752817adc     -home-blasi-finance-blasi-de..    423 warm-wandering-widget
+66cf08ac-b9e3-4fd9-a2cf-331ab8f4482e     -home-blasi-finance-blasi-de..    389 modular-shimmying-meteor
+6b1e3f87-f283-4a68-8869-eb7d27b43239     -home-blasi-finance-blasi-de..    361 fluttering-cooking-tower
+4e23878d-ee24-4ba0-a354-606195215a79     -home-blasi-finance-blasi-de..    357 hidden-marinating-cat
+8a48ea25-8dd4-410f-af97-d9f9956d26f2     -home-blasi--openclaw-tmp-ga..    351 noble-doodling-sedgewick
+6dfcfdde-9175-4e98-9b37-1f3d52678e81     -home-blasi-finance-blasi-de..    328 toasty-popping-snowflake
+a146557c-8264-407a-b6dc-514553698238     -home-blasi-finance-blasi-de..    309 parsed-tickling-marshmallow
+33dc7973-bb49-4bb1-9491-7a604ef83cc6     -home-blasi-finance-blasi-de..    289 bubbly-nibbling-lantern
+df5c13be-0266-4e47-9323-a286866439fd     -home-blasi-finance-blasi-de..    287 peaceful-hatching-pearl
+ebab1641-5bf2-4ab1-bac5-7e5c41bcad98     -home-blasi-claude-code-gate..    277 polymorphic-percolating-swing
+  ... and 48 more sessions
+
+================================================================================
+  END OF CATALOG
+================================================================================
