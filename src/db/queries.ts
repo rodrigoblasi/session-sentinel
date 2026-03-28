@@ -305,6 +305,55 @@ export function insertTranscriptEntry(data: TranscriptInsert): void {
   );
 }
 
+// --- Session field updates ---
+
+export function updateSessionPendingQuestion(id: string, question: string | null): void {
+  getDb()
+    .prepare("UPDATE sessions SET pending_question = ?, updated_at = datetime('now') WHERE id = ?")
+    .run(question, id);
+}
+
+export function updateSessionRemoteUrl(id: string, remoteUrl: string): void {
+  getDb()
+    .prepare("UPDATE sessions SET remote_url = ?, updated_at = datetime('now') WHERE id = ?")
+    .run(remoteUrl, id);
+}
+
+export function updateSessionType(id: string, type: string): void {
+  getDb()
+    .prepare("UPDATE sessions SET type = ?, updated_at = datetime('now') WHERE id = ?")
+    .run(type, id);
+}
+
+// --- Sub-agent tokens ---
+
+export function updateSubAgentTokens(agentId: string, tokens: TokenDelta): void {
+  const sets: string[] = [];
+  const params: unknown[] = [];
+
+  if (tokens.input_tokens) {
+    sets.push('input_tokens = input_tokens + ?');
+    params.push(tokens.input_tokens);
+  }
+  if (tokens.output_tokens) {
+    sets.push('output_tokens = output_tokens + ?');
+    params.push(tokens.output_tokens);
+  }
+  if (tokens.cache_read_tokens) {
+    sets.push('cache_read_tokens = cache_read_tokens + ?');
+    params.push(tokens.cache_read_tokens);
+  }
+  if (tokens.cache_create_tokens) {
+    sets.push('cache_create_tokens = cache_create_tokens + ?');
+    params.push(tokens.cache_create_tokens);
+  }
+
+  if (sets.length === 0) return;
+
+  params.push(agentId);
+  getDb().prepare(`UPDATE sub_agents SET ${sets.join(', ')} WHERE id = ?`).run(...params);
+}
+
 // --- Projects ---
 
 export function upsertProject(name: string, cwd: string): void {

@@ -10,7 +10,7 @@ import {
   readMetaFile,
   isSubagentPath,
 } from './subagent-detector.js';
-import { initDb, closeDb, getDb } from '../db/connection.js';
+import { initDb, closeDb } from '../db/connection.js';
 import * as queries from '../db/queries.js';
 import type {
   MonitorConfig,
@@ -158,13 +158,14 @@ export class SessionMonitor extends EventEmitter {
     }
 
     // State machine transition
-    const newStatus = transition(session!.status as SessionStatus, event);
+    const previousStatus = session!.status as SessionStatus;
+    const newStatus = transition(previousStatus, event);
     if (newStatus) {
       queries.updateSessionStatus(session!.id, newStatus);
       session = queries.getSession(session!.id)!;
       this.emit('session:status_changed', {
         session,
-        from: session!.status,
+        from: previousStatus,
         to: newStatus,
       });
     }
@@ -180,9 +181,15 @@ export class SessionMonitor extends EventEmitter {
 
     // Question detection
     if (event.question && event.toolName && QUESTION_TOOL_NAMES.has(event.toolName)) {
-      // Update pending_question on session and force status to waiting
-      getDb().prepare('UPDATE sessions SET pending_question = ?, status = ? WHERE id = ?')
-        .run(event.question, 'waiting', session!.id);
+      queries.updateSessionPendingQuestion(session!.id, event.question);
+
+      // Ensure status is waiting (may not have transitioned if first event)
+      const currentStatus = (queries.getSession(session!.id)!).status as SessionStatus;
+      if (currentStatus !== 'waiting') {
+        queries.updateSessionStatus(session!.id, 'waiting');
+        session = queries.getSession(session!.id)!;
+        this.emit('session:status_changed', { session, from: currentStatus, to: 'waiting' });
+      }
 
       session = queries.getSession(session!.id)!;
       this.emit('session:question_detected', { session, question: event.question });
@@ -190,8 +197,7 @@ export class SessionMonitor extends EventEmitter {
 
     // Bridge status (Remote URL)
     if (event.type === 'system:bridge_status' && event.remoteUrl) {
-      getDb().prepare('UPDATE sessions SET remote_url = ? WHERE id = ?')
-        .run(event.remoteUrl, session!.id);
+      queries.updateSessionRemoteUrl(session!.id, event.remoteUrl);
     }
 
     // Emit activity
@@ -226,7 +232,7 @@ export class SessionMonitor extends EventEmitter {
     // Handle managed/unmanaged handoff
     if (boundary.isHandoff) {
       const newType = boundary.entrypoint === 'cli' ? 'unmanaged' : 'managed';
-      getDb().prepare('UPDATE sessions SET type = ? WHERE id = ?').run(newType, session.id);
+      queries.updateSessionType(session.id, newType);
 
       queries.insertEvent({
         session_id: session.id,
@@ -275,30 +281,7 @@ export class SessionMonitor extends EventEmitter {
     // Accumulate sub-agent tokens
     if (event.tokens && event.agentId) {
       try {
-        const sets: string[] = [];
-        const params: unknown[] = [];
-
-        if (event.tokens.input_tokens) {
-          sets.push('input_tokens = input_tokens + ?');
-          params.push(event.tokens.input_tokens);
-        }
-        if (event.tokens.output_tokens) {
-          sets.push('output_tokens = output_tokens + ?');
-          params.push(event.tokens.output_tokens);
-        }
-        if (event.tokens.cache_read_tokens) {
-          sets.push('cache_read_tokens = cache_read_tokens + ?');
-          params.push(event.tokens.cache_read_tokens);
-        }
-        if (event.tokens.cache_create_tokens) {
-          sets.push('cache_create_tokens = cache_create_tokens + ?');
-          params.push(event.tokens.cache_create_tokens);
-        }
-
-        if (sets.length > 0) {
-          params.push(event.agentId);
-          getDb().prepare(`UPDATE sub_agents SET ${sets.join(', ')} WHERE id = ?`).run(...params);
-        }
+        queries.updateSubAgentTokens(event.agentId, event.tokens);
 
         // Also roll up to parent session
         const parentId = extractParentSessionId(filePath);
