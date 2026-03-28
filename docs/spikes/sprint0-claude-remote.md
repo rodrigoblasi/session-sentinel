@@ -159,18 +159,33 @@ API.
 This is expected: `query()` corresponds to `--print` mode internally, and the
 `--remote-control` flag requires an interactive session.
 
-### 3.2 SDK V2 (`unstable_v2_createSession`) — Unknown
+### 3.2 SDK V2 (`unstable_v2_createSession`) — Confirmed: No bridge_status
 
-SDK V2 creates a persistent session object (see Task 5 findings). Whether V2
-sessions produce `bridge_status` events is not confirmed in the local dataset
-— no V2 sessions were observed. However, given that V2 is intended to match
-interactive session behavior, it is likely that V2 sessions do produce
-`bridge_status` if the underlying process runs with remote control enabled.
+**Tested 2026-03-28** (Sprint 1, Issue #3).
 
-**Action for Sprint 1:** When testing SDK V2 sessions in `sandbox/`, verify
-whether `bridge_status` appears in the JSONL and confirm the URL is captured.
-If not, the Session Manager will need to pass `--remote-control` explicitly
-when spawning via the SDK.
+SDK V2 sessions do NOT produce `bridge_status` events. Two tests were run:
+
+| Test | Config | Result |
+|------|--------|--------|
+| Test 1 | `unstable_v2_createSession({ model })` | No `bridge_status`. JSONL had 1 event: `queue-operation`. |
+| Test 2 | Same + `extraArgs: { 'remote-control': null }` | No `bridge_status`. `extraArgs` not in `SDKSessionOptions` type — ignored. |
+
+**Observations:**
+- The JSONL output for V2 sessions is minimal (1 `queue-operation` event)
+- No `entrypoint` field is set on the events
+- V2 spawns subagent-like worker files (`agent-*.jsonl`) for the actual work
+- The `SDKSessionOptions` type only exposes: `model`, `pathToClaudeCodeExecutable`, `executable`, `executableArgs`, `env` — no `extraArgs`, `cwd`, or `systemPrompt`
+- `send()` returns `Promise<void>` (responses come via `stream()` async generator)
+
+**Decision:** SDK V2 managed sessions will not have Claude Remote URLs.
+The Sentinel dashboard itself serves as the observation/interaction tool for
+managed sessions. Claude Remote remains available only for CLI-launched
+(unmanaged) sessions where the operator can open the URL in their browser.
+
+**Impact on SessionDriver interface:** The `SessionDriver` (Sprint 2) must not
+assume `remote_url` is available for managed sessions. The field remains nullable
+in the schema. Dashboard drill-down should show "No remote URL (SDK session)"
+when `remote_url IS NULL AND type = 'managed'`.
 
 ### 3.3 No SDK-Native URL Property
 
@@ -375,7 +390,7 @@ to find the terminal running the session.
 | When is it available? | Before the first user turn (lines 0–2 of JSONL) |
 | Reliability (CLI sessions)? | 96% (100% for sessions completing startup) |
 | Does SDK V1 produce it? | No (`sdk-cli` entrypoint never has bridge_status) |
-| Does SDK V2 produce it? | Unknown — verify in Sprint 1 sandbox testing |
+| Does SDK V2 produce it? | No — confirmed 2026-03-28, no `bridge_status` even with `--remote-control` attempt |
 | How should Sentinel capture it? | JSONL Monitor — parse `bridge_status` events |
 | Is Claude Remote interactive? | Yes — human can read and send messages |
 | Does Claude Remote have an API? | No — browser-only, no programmatic access |
