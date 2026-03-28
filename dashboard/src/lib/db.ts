@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3';
 import path from 'node:path';
 
-const DB_PATH = path.resolve(import.meta.dirname, '../../sentinel-dev.db');
+const DB_PATH = path.resolve(import.meta.dirname, '../../../sentinel-dev.db');
 
 let db: Database.Database | null = null;
 
