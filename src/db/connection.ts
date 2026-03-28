@@ -6,6 +6,10 @@ import { fileURLToPath } from 'node:url';
 let db: Database.Database | null = null;
 
 export function initDb(dbPath: string): Database.Database {
+  if (db) {
+    throw new Error('Database already initialized. Call closeDb() before re-initializing.');
+  }
+
   db = new Database(dbPath);
 
   db.pragma('journal_mode = WAL');
