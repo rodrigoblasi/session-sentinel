@@ -151,6 +151,14 @@ describe('queries', () => {
       expect(run2.run_number).toBe(2);
     });
 
+    it('getCurrentRun returns null when session has no runs', () => {
+      const session = queries.upsertSession({
+        claude_session_id: 'uuid-1',
+        jsonl_path: '/path/to/uuid-1.jsonl',
+      });
+      expect(queries.getCurrentRun(session.id)).toBeNull();
+    });
+
     it('getCurrentRun returns the latest run', () => {
       const session = queries.upsertSession({
         claude_session_id: 'uuid-1',

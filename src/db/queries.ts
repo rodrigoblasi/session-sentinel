@@ -185,9 +185,9 @@ export function insertRun(data: RunInsert): Run {
 }
 
 export function getCurrentRun(sessionId: string): Run | null {
-  return getDb()
+  return (getDb()
     .prepare('SELECT * FROM runs WHERE session_id = ? ORDER BY run_number DESC LIMIT 1')
-    .get(sessionId) as Run | null;
+    .get(sessionId) as Run | undefined) ?? null;
 }
 
 export function updateRunTokens(runId: number, tokens: TokenDelta): void {
