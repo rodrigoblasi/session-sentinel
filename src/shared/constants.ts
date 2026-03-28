@@ -1,4 +1,4 @@
-import type { SessionStatus } from './types.js';
+import type { SessionStatus, RunStartType } from './types.js';
 
 export const DEFAULT_MONITOR_CONFIG = {
   watchRoot: `${process.env.HOME}/.claude/projects`,
@@ -24,7 +24,7 @@ export const QUESTION_TOOL_NAMES = new Set([
 ]);
 
 // Hook names that indicate run start type
-export const RUN_START_HOOKS: Record<string, string> = {
+export const RUN_START_HOOKS: Record<string, RunStartType> = {
   'SessionStart:startup': 'startup',
   'SessionStart:resume': 'resume',
   'SessionStart:compact': 'compact',
