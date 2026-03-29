@@ -7,7 +7,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && cp src/api/openapi.yaml dist/api/openapi.yaml",
     "start": "tsx src/main.ts",
     "dev": "tsx watch src/main.ts",
     "test": "vitest run",

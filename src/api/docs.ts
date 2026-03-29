@@ -8,8 +8,19 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export async function registerDocs(app: FastifyInstance): Promise<void> {
   const specPath = path.join(__dirname, 'openapi.yaml');
-  const specYaml = fs.readFileSync(specPath, 'utf8');
-  const spec = yaml.load(specYaml) as Record<string, unknown>;
+
+  let spec: Record<string, unknown>;
+  try {
+    const specYaml = fs.readFileSync(specPath, 'utf8');
+    spec = yaml.load(specYaml) as Record<string, unknown>;
+  } catch {
+    app.log.warn(`OpenAPI spec not found at ${specPath} — /docs endpoints disabled`);
+    app.get('/docs/openapi.json', async (_req, reply) =>
+      reply.status(503).send({ error: 'OpenAPI spec not available' }));
+    app.get('/docs', async (_req, reply) =>
+      reply.status(503).send({ error: 'OpenAPI spec not available' }));
+    return;
+  }
 
   // Serve raw JSON spec
   app.get('/docs/openapi.json', async (_request, reply) => {
