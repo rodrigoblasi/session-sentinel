@@ -292,3 +292,130 @@ curl -X DELETE http://localhost:3100/sessions/ss-01JQXYZ...
 ```
 
 Returns `200 OK` with `{ "status": "terminated" }`.
+
+### Report & Analytics
+
+#### `GET /report`
+
+Environment snapshot — the single best endpoint for agents to understand the current state.
+
+```bash
+curl http://localhost:3100/report
+```
+
+```json
+{
+  "summary": {
+    "total_sessions": 12,
+    "active": 2,
+    "waiting": 1,
+    "idle": 0,
+    "ended_today": 8,
+    "errors_today": 1,
+    "total_tokens_today": 245000
+  },
+  "needs_attention": [
+    { "id": "ss-01JQABC...", "status": "waiting", "project_name": "wow-bot", "pending_question": "Which database migration strategy?" }
+  ],
+  "active_sessions": [
+    { "id": "ss-01JQDEF...", "status": "active", "project_name": "session-sentinel" }
+  ],
+  "recent_events": [
+    { "id": 42, "session_id": "ss-01JQABC...", "event_type": "status_change", "from_status": "active", "to_status": "waiting", "actor": "monitor", "created_at": "2026-03-29T10:35:00.000Z" }
+  ],
+  "by_project": {
+    "wow-bot": { "active": 1, "waiting": 1, "ended_today": 3 },
+    "session-sentinel": { "active": 1, "waiting": 0, "ended_today": 5 }
+  }
+}
+```
+
+### Events
+
+#### `GET /events`
+
+Global event log with optional filters.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `session_id` | string | Filter events for a specific session |
+| `event_type` | string | Filter by event type (e.g., `status_change`, `session_created`, `housekeep`) |
+| `limit` | number | Max number of results (default: all) |
+
+```bash
+# Recent events across all sessions
+curl "http://localhost:3100/events?limit=20"
+
+# Events for a specific session
+curl "http://localhost:3100/events?session_id=ss-01JQXYZ..."
+```
+
+```json
+[
+  {
+    "id": 42,
+    "session_id": "ss-01JQXYZ...",
+    "event_type": "status_change",
+    "from_status": "active",
+    "to_status": "waiting",
+    "actor": "monitor",
+    "detail": null,
+    "created_at": "2026-03-29T10:35:00.000Z"
+  }
+]
+```
+
+### Projects
+
+#### `GET /projects`
+
+List known projects. Projects are auto-discovered from session working directories.
+
+```bash
+curl http://localhost:3100/projects
+```
+
+```json
+[
+  {
+    "name": "my-project",
+    "cwd": "/home/user/my-project",
+    "discovered_at": "2026-03-28T09:00:00.000Z",
+    "last_session_at": "2026-03-29T10:30:00.000Z",
+    "session_count": 5,
+    "alias": null
+  }
+]
+```
+
+### WebSocket
+
+#### `ws://<host>:3100/ws`
+
+Real-time event stream. Connect once and receive all session events as they happen.
+
+```bash
+wscat -c ws://localhost:3100/ws
+```
+
+Four event types are broadcast:
+
+**`session_update`** — A session was discovered or had activity:
+```json
+{ "type": "session_update", "session": { "id": "ss-01JQXYZ...", "status": "active", "..." : "..." } }
+```
+
+**`status_change`** — A session changed status:
+```json
+{ "type": "status_change", "sessionId": "ss-01JQXYZ...", "from": "active", "to": "waiting" }
+```
+
+**`event`** — A new session event was recorded:
+```json
+{ "type": "event", "event": { "id": 42, "session_id": "ss-01JQXYZ...", "event_type": "status_change", "..." : "..." } }
+```
+
+**`notification`** — A notification was sent:
+```json
+{ "type": "notification", "sessionId": "ss-01JQXYZ...", "trigger": "waiting", "destination": "#my-agent" }
+```
