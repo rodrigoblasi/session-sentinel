@@ -4,6 +4,35 @@
   const runs = $derived(data.runs);
   const events = $derived(data.events);
   const transcript = $derived(data.transcript);
+  const notifications = $derived(data.notifications ?? []);
+
+  let terminating = $state(false);
+  let terminateError = $state('');
+
+  async function terminateSession() {
+    if (!confirm(`Terminate session ${session.label ?? session.id}?`)) return;
+    terminating = true;
+    terminateError = '';
+    try {
+      const res = await fetch(`http://localhost:3100/sessions/${session.id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const body = await res.json();
+        terminateError = body.error ?? 'Failed to terminate';
+      } else {
+        window.location.reload();
+      }
+    } catch (err) {
+      terminateError = 'Network error';
+    } finally {
+      terminating = false;
+    }
+  }
+
+  let resumeCommand = $derived(
+    session.can_resume && ['ended', 'error', 'idle'].includes(session.status)
+      ? `claude --resume ${session.claude_session_id}`
+      : null
+  );
 
   const STATUS_COLORS: Record<string, string> = {
     starting: '#94a3b8',
@@ -71,6 +100,29 @@
     {/if}
   </section>
 
+  <!-- Actions -->
+  <section class="actions">
+    <h2>Actions</h2>
+    <div class="action-row">
+      {#if session.type === 'managed' && ['active', 'waiting', 'idle'].includes(session.status)}
+        <button class="btn-danger" onclick={terminateSession} disabled={terminating}>
+          {terminating ? 'Terminating...' : 'Terminate Session'}
+        </button>
+      {/if}
+
+      {#if resumeCommand}
+        <div class="resume-cmd">
+          <strong>Resume CLI:</strong>
+          <code>{resumeCommand}</code>
+        </div>
+      {/if}
+    </div>
+
+    {#if terminateError}
+      <div class="alert error">{terminateError}</div>
+    {/if}
+  </section>
+
   <section class="runs">
     <h2>Runs ({runs.length})</h2>
     <table>
@@ -108,6 +160,26 @@
     </table>
   </section>
 
+  <!-- Notifications -->
+  {#if notifications.length > 0}
+    <section class="notifications">
+      <h2>Notifications ({notifications.length})</h2>
+      <table>
+        <thead><tr><th>Time</th><th>Trigger</th><th>Destination</th><th>Delivered</th></tr></thead>
+        <tbody>
+          {#each notifications as notif}
+            <tr>
+              <td>{timeAgo(notif.created_at)}</td>
+              <td><span class="badge" style="background: {notif.trigger === 'error' ? '#ef4444' : '#eab308'}">{notif.trigger}</span></td>
+              <td>{notif.destination}</td>
+              <td>{notif.delivered ? 'Yes' : 'No'}</td>
+            </tr>
+          {/each}
+        </tbody>
+      </table>
+    </section>
+  {/if}
+
   <section class="transcript">
     <h2>Transcript ({transcript.length} turns)</h2>
     <div class="transcript-list">
@@ -142,4 +214,31 @@
   .turn-header { display: flex; justify-content: space-between; font-size: 0.75rem; color: #94a3b8; margin-bottom: 0.25rem; }
   .turn-content { white-space: pre-wrap; font-size: 0.85rem; }
   h2 { margin-top: 2rem; color: #94a3b8; border-bottom: 1px solid #1e293b; padding-bottom: 0.5rem; }
+  .actions { margin-top: 2rem; }
+  .action-row { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
+  .btn-danger {
+    background: #ef4444;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 0.85rem;
+  }
+  .btn-danger:hover { background: #dc2626; }
+  .btn-danger:disabled { opacity: 0.5; cursor: not-allowed; }
+  .resume-cmd {
+    background: #1e293b;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+  }
+  .resume-cmd code {
+    background: #334155;
+    padding: 2px 6px;
+    border-radius: 3px;
+    user-select: all;
+  }
+  .badge { padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; color: #000; }
 </style>
