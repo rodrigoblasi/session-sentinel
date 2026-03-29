@@ -2032,7 +2032,7 @@ git commit -m "feat(bridge): implement Agent Bridge with dual notification deliv
 Create `tests/integration/api.test.ts`:
 
 ```typescript
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeAll, afterAll, beforeEach } from 'vitest';
 import { buildServer } from '../../src/api/server.js';
 import { initDb, closeDb, getDb } from '../../src/db/connection.js';
 import * as queries from '../../src/db/queries.js';
@@ -2231,6 +2231,156 @@ describe('REST API', () => {
       expect(response.statusCode).toBe(200);
       expect(response.json()).toHaveLength(1);
       expect(response.json()[0].name).toBe('wow-bot');
+    });
+  });
+
+  // --- Write endpoints (require Manager) ---
+  // These tests use a mock Manager since the real SDK is not available in tests.
+
+  describe('POST /sessions (with Manager)', () => {
+    let appWithManager: FastifyInstance;
+    let mockManager: any;
+
+    beforeAll(async () => {
+      mockManager = {
+        createSession: vi.fn().mockResolvedValue({
+          id: 'ss-new', status: 'starting', type: 'managed', owner: 'jarvis',
+        }),
+        resumeSession: vi.fn().mockResolvedValue({
+          id: 'ss-resumed', status: 'starting', type: 'managed', owner: 'moon',
+        }),
+        sendMessage: vi.fn().mockResolvedValue(undefined),
+        terminateSession: vi.fn().mockResolvedValue(undefined),
+      };
+      appWithManager = buildServer({ manager: mockManager });
+      await appWithManager.ready();
+    });
+
+    afterAll(async () => {
+      await appWithManager.close();
+    });
+
+    it('creates a managed session', async () => {
+      const response = await appWithManager.inject({
+        method: 'POST', url: '/sessions',
+        payload: { prompt: 'Review auth', owner: 'jarvis', project: 'wow-bot' },
+      });
+      expect(response.statusCode).toBe(201);
+      expect(response.json().type).toBe('managed');
+      expect(mockManager.createSession).toHaveBeenCalledOnce();
+    });
+
+    it('rejects without prompt or owner', async () => {
+      const response = await appWithManager.inject({
+        method: 'POST', url: '/sessions',
+        payload: { prompt: 'Test' }, // missing owner
+      });
+      expect(response.statusCode).toBe(400);
+    });
+
+    it('returns 503 when Manager is not available', async () => {
+      const response = await app.inject({
+        method: 'POST', url: '/sessions',
+        payload: { prompt: 'Test', owner: 'jarvis' },
+      });
+      expect(response.statusCode).toBe(503);
+    });
+  });
+
+  describe('POST /sessions/:id/resume', () => {
+    let appWithManager: FastifyInstance;
+    let mockManager: any;
+
+    beforeAll(async () => {
+      mockManager = {
+        resumeSession: vi.fn().mockResolvedValue({
+          id: 'ss-resumed', status: 'starting', type: 'managed', owner: 'moon',
+        }),
+      };
+      appWithManager = buildServer({ manager: mockManager });
+      await appWithManager.ready();
+    });
+
+    afterAll(async () => { await appWithManager.close(); });
+
+    it('resumes a session with new owner', async () => {
+      const response = await appWithManager.inject({
+        method: 'POST', url: '/sessions/ss-test/resume',
+        payload: { prompt: 'Continue', owner: 'moon' },
+      });
+      expect(response.statusCode).toBe(200);
+      expect(mockManager.resumeSession).toHaveBeenCalledWith('ss-test', expect.objectContaining({ owner: 'moon' }));
+    });
+
+    it('rejects without prompt or owner', async () => {
+      const response = await appWithManager.inject({
+        method: 'POST', url: '/sessions/ss-test/resume',
+        payload: { prompt: 'Continue' }, // missing owner
+      });
+      expect(response.statusCode).toBe(400);
+    });
+  });
+
+  describe('POST /sessions/:id/message', () => {
+    let appWithManager: FastifyInstance;
+    let mockManager: any;
+
+    beforeAll(async () => {
+      mockManager = {
+        sendMessage: vi.fn().mockResolvedValue(undefined),
+      };
+      appWithManager = buildServer({ manager: mockManager });
+      await appWithManager.ready();
+    });
+
+    afterAll(async () => { await appWithManager.close(); });
+
+    it('sends a message and returns 202', async () => {
+      const response = await appWithManager.inject({
+        method: 'POST', url: '/sessions/ss-test/message',
+        payload: { message: 'Yes, proceed' },
+      });
+      expect(response.statusCode).toBe(202);
+      expect(mockManager.sendMessage).toHaveBeenCalledWith('ss-test', { message: 'Yes, proceed' });
+    });
+
+    it('rejects without message', async () => {
+      const response = await appWithManager.inject({
+        method: 'POST', url: '/sessions/ss-test/message',
+        payload: {},
+      });
+      expect(response.statusCode).toBe(400);
+    });
+  });
+
+  describe('DELETE /sessions/:id', () => {
+    let appWithManager: FastifyInstance;
+    let mockManager: any;
+
+    beforeAll(async () => {
+      mockManager = {
+        terminateSession: vi.fn().mockResolvedValue(undefined),
+      };
+      appWithManager = buildServer({ manager: mockManager });
+      await appWithManager.ready();
+    });
+
+    afterAll(async () => { await appWithManager.close(); });
+
+    it('terminates a session', async () => {
+      const response = await appWithManager.inject({
+        method: 'DELETE', url: '/sessions/ss-test',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(response.json().status).toBe('terminated');
+    });
+
+    it('returns 404 for not-found session', async () => {
+      mockManager.terminateSession.mockRejectedValueOnce(new Error('Session not found: ss-nope'));
+      const response = await appWithManager.inject({
+        method: 'DELETE', url: '/sessions/ss-nope',
+      });
+      expect(response.statusCode).toBe(404);
     });
   });
 });
@@ -2598,6 +2748,64 @@ describe('WebSocket /ws', () => {
 
     ws.close();
   });
+
+  it('broadcasts to multiple simultaneous clients', async () => {
+    const ws1 = new WebSocket(`ws://localhost:${port}/ws`);
+    const ws2 = new WebSocket(`ws://localhost:${port}/ws`);
+    const ws3 = new WebSocket(`ws://localhost:${port}/ws`);
+    await Promise.all([
+      new Promise<void>(resolve => ws1.on('open', resolve)),
+      new Promise<void>(resolve => ws2.on('open', resolve)),
+      new Promise<void>(resolve => ws3.on('open', resolve)),
+    ]);
+
+    const received = Promise.all([
+      new Promise<any>(resolve => ws1.on('message', (d) => resolve(JSON.parse(d.toString())))),
+      new Promise<any>(resolve => ws2.on('message', (d) => resolve(JSON.parse(d.toString())))),
+      new Promise<any>(resolve => ws3.on('message', (d) => resolve(JSON.parse(d.toString())))),
+    ]);
+
+    mockMonitor.emit('session:status_changed', {
+      session: { id: 'ss-multi', status: 'active' },
+      from: 'starting',
+      to: 'active',
+    });
+
+    const messages = await received;
+    expect(messages).toHaveLength(3);
+    expect(messages.every((m: any) => m.sessionId === 'ss-multi')).toBe(true);
+
+    ws1.close(); ws2.close(); ws3.close();
+  });
+
+  it('handles client disconnect during broadcast without crashing', async () => {
+    const ws1 = new WebSocket(`ws://localhost:${port}/ws`);
+    const ws2 = new WebSocket(`ws://localhost:${port}/ws`);
+    await Promise.all([
+      new Promise<void>(resolve => ws1.on('open', resolve)),
+      new Promise<void>(resolve => ws2.on('open', resolve)),
+    ]);
+
+    // Disconnect ws1 before broadcast
+    ws1.close();
+    await new Promise(r => setTimeout(r, 50));
+
+    const received = new Promise<any>(resolve => {
+      ws2.on('message', (data) => resolve(JSON.parse(data.toString())));
+    });
+
+    // Should not throw — server handles dead clients gracefully
+    mockMonitor.emit('session:status_changed', {
+      session: { id: 'ss-disconnect', status: 'error' },
+      from: 'active',
+      to: 'error',
+    });
+
+    const message = await received;
+    expect(message.sessionId).toBe('ss-disconnect');
+
+    ws2.close();
+  });
 });
 ```
 
@@ -2705,6 +2913,7 @@ git commit -m "feat(api): implement WebSocket real-time event broadcasting"
 
 **Depends on:** Task 7 (WebSocket)
 **Spec reference:** Section 8 (dashboard UI)
+**Coverage:** Manual verification only — Vitest unit tests are not applicable for SvelteKit UI components. E2E testing (Playwright) is out of scope for Sprint 2. Verify by running the dashboard and navigating to a session detail page.
 
 **Files:**
 - Modify: `dashboard/src/routes/+page.svelte` (add WebSocket connection for real-time)
