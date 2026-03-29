@@ -35,8 +35,8 @@ export async function registerDocs(app: FastifyInstance): Promise<void> {
       SwaggerUIBundle({
         url: '/docs/openapi.json',
         dom_id: '#swagger-ui',
-        presets: [SwaggerUIBundle.presets.apis, SwaggerUIBundle.SwaggerUIStandalonePreset],
-        layout: 'StandaloneLayout',
+        presets: [SwaggerUIBundle.presets.apis],
+        layout: 'BaseLayout',
       });
     };
   </script>

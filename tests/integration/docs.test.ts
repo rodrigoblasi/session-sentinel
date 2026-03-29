@@ -73,12 +73,10 @@ describe('OpenAPI docs', () => {
   describe('GET /docs', () => {
     it('returns Swagger UI HTML', async () => {
       const response = await app.inject({ method: 'GET', url: '/docs' });
-      // Swagger UI redirects /docs to /docs/ or serves HTML directly
-      expect([200, 302]).toContain(response.statusCode);
-      if (response.statusCode === 200) {
-        expect(response.headers['content-type']).toContain('text/html');
-        expect(response.body).toContain('swagger');
-      }
+      expect(response.statusCode).toBe(200);
+      expect(response.headers['content-type']).toContain('text/html');
+      expect(response.body).toContain('swagger-ui');
+      expect(response.body).toContain('/docs/openapi.json');
     });
   });
 });
