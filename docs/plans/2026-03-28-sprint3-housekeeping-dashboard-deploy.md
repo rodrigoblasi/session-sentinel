@@ -702,9 +702,9 @@ git commit -m "feat(infra): integrate Housekeeper — skip managed sessions in M
 - Modify: `dashboard/src/routes/sessions/[id]/+page.server.ts`
 - Test: `tests/integration/api.test.ts`
 
-- [ ] **Step 1: Write failing test for notifications in session detail**
+- [ ] **Step 1: Write failing tests for notifications in session detail**
 
-Add a test in `tests/integration/api.test.ts` within the session detail describe block:
+Add tests in `tests/integration/api.test.ts` within the session detail describe block:
 
 ```typescript
   it('GET /sessions/:id includes notifications array', async () => {
@@ -745,6 +745,66 @@ Add a test in `tests/integration/api.test.ts` within the session detail describe
     expect(body.notifications).toBeDefined();
     expect(body.notifications).toHaveLength(1);
     expect(body.notifications[0].trigger).toBe('waiting');
+  });
+
+  it('GET /sessions/:id returns empty notifications array when none exist', async () => {
+    const session = queries.upsertSession({
+      claude_session_id: 'cs-detail-no-notif',
+      jsonl_path: '/tmp/no-notif.jsonl',
+      status: 'active',
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/sessions/${session.id}`,
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json();
+    expect(body.notifications).toBeDefined();
+    expect(body.notifications).toEqual([]);
+  });
+
+  it('GET /sessions/:id returns multiple notifications in order', async () => {
+    const session = queries.upsertSession({
+      claude_session_id: 'cs-detail-multi-notif',
+      jsonl_path: '/tmp/multi-notif.jsonl',
+      status: 'error',
+      type: 'managed',
+    });
+    queries.updateSessionOwner(session.id, 'moon');
+
+    const basePayload = {
+      sessionId: session.id, label: null, status: 'waiting',
+      project: null, gitBranch: null, pendingQuestion: null,
+      errorMessage: null, waitingSince: null,
+      apiUrl: `http://localhost:3100/sessions/${session.id}`,
+    };
+
+    queries.insertNotification({
+      session_id: session.id, channel: 'discord_owner',
+      destination: '#moon', trigger: 'waiting',
+      payload: { ...basePayload, status: 'waiting' }, delivered: true,
+    });
+    queries.insertNotification({
+      session_id: session.id, channel: 'discord_sentinel_log',
+      destination: '#sentinel-log', trigger: 'waiting',
+      payload: { ...basePayload, status: 'waiting' }, delivered: true,
+    });
+    queries.insertNotification({
+      session_id: session.id, channel: 'discord_owner',
+      destination: '#moon', trigger: 'error',
+      payload: { ...basePayload, status: 'error', errorMessage: 'crash' }, delivered: false,
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/sessions/${session.id}`,
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json();
+    expect(body.notifications).toHaveLength(3);
   });
 ```
 
