@@ -612,6 +612,12 @@ paths:
                   status:
                     type: string
                     example: terminated
+        '400':
+          description: Session cannot be terminated in its current state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '404':
           description: Session not found
           content:
