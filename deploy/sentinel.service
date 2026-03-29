@@ -7,7 +7,7 @@ Type=simple
 User=blasi
 WorkingDirectory=/home/blasi/session-sentinel
 EnvironmentFile=/home/blasi/session-sentinel/deploy/sentinel.env
-ExecStart=/usr/bin/npx tsx src/main.ts
+ExecStart=/home/blasi/session-sentinel/node_modules/.bin/tsx src/main.ts
 Restart=on-failure
 RestartSec=5
 
