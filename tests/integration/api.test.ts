@@ -212,6 +212,63 @@ describe('REST API', () => {
       expect(body.notifications).toEqual([]);
     });
 
+    it('includes empty hierarchy when no sub-agents', async () => {
+      const session = queries.upsertSession({
+        claude_session_id: 'cs-hier-empty',
+        jsonl_path: '/tmp/hier-empty.jsonl',
+        status: 'active',
+      });
+
+      const response = await app.inject({ method: 'GET', url: `/sessions/${session.id}` });
+      expect(response.statusCode).toBe(200);
+      const body = response.json();
+      expect(body.hierarchy).toBeDefined();
+      expect(body.hierarchy.sub_agents).toEqual([]);
+      expect(body.hierarchy.sub_agent_count).toBe(0);
+      expect(body.hierarchy.total_sub_agent_tokens).toEqual({
+        input: 0, output: 0, cache_read: 0, cache_create: 0,
+      });
+    });
+
+    it('includes hierarchy with sub-agents ordered by started_at DESC', async () => {
+      const session = queries.upsertSession({
+        claude_session_id: 'cs-hier-full',
+        jsonl_path: '/tmp/hier-full.jsonl',
+        status: 'active',
+      });
+
+      queries.upsertSubAgent({
+        id: 'sa-older', session_id: session.id,
+        pattern: 'regular', jsonl_path: '/tmp/sa-older.jsonl',
+        agent_type: 'Explore', description: 'Search codebase',
+      });
+      const db = getDb();
+      db.prepare(
+        "UPDATE sub_agents SET started_at = '2026-03-29T10:00:00', input_tokens = 5000, output_tokens = 3000 WHERE id = 'sa-older'",
+      ).run();
+
+      queries.upsertSubAgent({
+        id: 'sa-newer', session_id: session.id,
+        pattern: 'compact', jsonl_path: '/tmp/sa-newer.jsonl',
+        agent_type: 'Plan', description: 'Plan implementation',
+      });
+      db.prepare(
+        "UPDATE sub_agents SET started_at = '2026-03-29T11:00:00', input_tokens = 2000, output_tokens = 1000, cache_read_tokens = 500 WHERE id = 'sa-newer'",
+      ).run();
+
+      const response = await app.inject({ method: 'GET', url: `/sessions/${session.id}` });
+      const body = response.json();
+
+      expect(body.hierarchy.sub_agent_count).toBe(2);
+      expect(body.hierarchy.sub_agents).toHaveLength(2);
+      // DESC order: sa-newer (11:00) before sa-older (10:00)
+      expect(body.hierarchy.sub_agents[0].id).toBe('sa-newer');
+      expect(body.hierarchy.sub_agents[1].id).toBe('sa-older');
+      expect(body.hierarchy.total_sub_agent_tokens).toEqual({
+        input: 7000, output: 4000, cache_read: 500, cache_create: 0,
+      });
+    });
+
     it('GET /sessions/:id returns multiple notifications in order', async () => {
       const session = queries.upsertSession({
         claude_session_id: 'cs-detail-multi-notif',
