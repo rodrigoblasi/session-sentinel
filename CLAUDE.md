@@ -194,6 +194,31 @@ Every issue must have:
 
 If an issue is missing these, **enrich it before starting**.
 
+### Architecture Decision Records (ADRs)
+
+**Structural and architectural decisions must be recorded as ADRs.** Whenever a question arises about *how* to build something (not *what* to build), and the answer involves choosing between approaches with different trade-offs, it becomes an ADR.
+
+| Item | Detail |
+|------|--------|
+| **Location** | `docs/decisions/NNNN-short-title.md` (sequential numbering) |
+| **When to create** | Before implementing a choice that affects architecture, dependencies, integration strategy, or cross-module patterns |
+| **Format** | Context → Problem → Options (with pros/cons/risk) → Recommendation → Decision (filled by operator) → Consequences → References |
+| **Status values** | `Proposed` → `Accepted` / `Rejected` / `Superseded by ADR-NNNN` |
+| **GitHub link** | After writing the ADR, post a summary + file link as a comment on the relevant issue. This connects the GitHub discussion history to the ADR. |
+
+Examples of ADR-worthy questions:
+- Which SDK version/API to use for session management
+- How to handle notification delivery (script, webhook, queue)
+- WebSocket architecture (per-session channels vs. global broadcast)
+- How to handle SDK breaking changes (pin, abstract, dual-driver)
+
+Examples of what is NOT an ADR:
+- Bug fixes (just fix it)
+- Implementation details that don't affect other modules
+- Variable naming, code style (covered by linting)
+
+**If in doubt, write the ADR.** The cost of documenting a decision is low. The cost of re-discovering why a decision was made is high.
+
 ### Commit conventions
 
 ```
