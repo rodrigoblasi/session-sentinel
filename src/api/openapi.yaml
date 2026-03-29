@@ -262,7 +262,10 @@ components:
           example: monitor
         detail:
           type: ['string', 'null']
-          description: JSON-encoded detail object
+          contentMediaType: application/json
+          description: >
+            JSON-encoded detail object. Consumers must JSON.parse() this
+            field to access structured data.
         created_at:
           type: string
           format: date-time
@@ -319,7 +322,10 @@ components:
           enum: [waiting, error]
         payload:
           type: string
-          description: JSON-encoded NotificationPayload
+          contentMediaType: application/json
+          description: >
+            JSON-encoded NotificationPayload. Consumers must JSON.parse()
+            this field to access structured notification data.
         delivered:
           type: boolean
           description: Whether delivery succeeded
@@ -580,7 +586,11 @@ paths:
                     items:
                       type: string
                       enum: [send_message, terminate, resume]
-                    description: Valid lifecycle actions for current state
+                    description: >
+                      Lifecycle actions valid for the session's current state and
+                      type. Unlisted actions will fail. Execution may still return
+                      4xx if required fields are missing or the Session Manager is
+                      unavailable.
                   hierarchy:
                     $ref: '#/components/schemas/HierarchyBlock'
         '404':
