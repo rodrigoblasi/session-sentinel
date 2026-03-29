@@ -31,3 +31,13 @@ export interface BridgeEvents {
 }
 
 export type BridgeEventName = keyof BridgeEvents;
+
+// --- Sprint 3 events ---
+
+export interface HousekeeperEvents {
+  'housekeeper:sweep': { checked: number; terminated: number };
+  'housekeeper:terminated': { sessionId: string; idleMs: number };
+  'housekeeper:error': { error: Error; sessionId?: string };
+}
+
+export type HousekeeperEventName = keyof HousekeeperEvents;

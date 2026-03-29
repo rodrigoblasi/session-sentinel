@@ -11,6 +11,7 @@ import type {
   SendMessageInput,
   ManagerConfig,
   Session,
+  TerminateOptions,
 } from '../shared/types.js';
 import type { ManagerEvents, ManagerEventName } from '../shared/events.js';
 
@@ -135,7 +136,7 @@ export class SessionManager extends EventEmitter {
     return queries.getSession(sessionId)!;
   }
 
-  async terminateSession(sessionId: string): Promise<void> {
+  async terminateSession(sessionId: string, opts?: TerminateOptions): Promise<void> {
     const session = queries.getSession(sessionId);
     if (!session) throw new Error(`Session not found: ${sessionId}`);
 
@@ -148,10 +149,11 @@ export class SessionManager extends EventEmitter {
     queries.updateSessionStatus(sessionId, 'ended');
     queries.insertEvent({
       session_id: sessionId,
-      event_type: 'session_terminated',
+      event_type: opts?.eventType ?? 'session_terminated',
       from_status: session.status,
       to_status: 'ended',
-      actor: 'api',
+      actor: opts?.actor ?? 'api',
+      detail: opts?.detail,
     });
 
     this.emit('manager:session_terminated', { sessionId });

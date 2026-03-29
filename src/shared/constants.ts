@@ -51,3 +51,8 @@ export const NOTIFICATION_CHANNELS = {
 } as const;
 
 export const NOTIFICATION_TRIGGERS = new Set(['waiting', 'error']);
+
+// --- Sprint 3: Housekeeping constants ---
+
+export const HOUSEKEEP_INTERVAL_MS = 60_000;       // sweep every 60s
+export const HOUSEKEEP_IDLE_THRESHOLD_MS = 15 * 60_000; // 15 min idle = auto-kill
