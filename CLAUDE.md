@@ -55,6 +55,13 @@ The full design is in `docs/specs/2026-03-27-session-sentinel-design.md`. Read i
 - **Tests:** Vitest
 - **Deploy:** systemd on homeserver01
 
+### Ports
+
+| Service | Port | Notes |
+|---------|------|-------|
+| Sentinel API | 3100 | Fastify + WebSocket (`ws://host:3100/ws`) |
+| Dashboard (dev) | 3001 | SvelteKit dev server — port 3000 is taken by WoW AHBot on homeserver01 |
+
 ---
 
 ## GitHub workflow
