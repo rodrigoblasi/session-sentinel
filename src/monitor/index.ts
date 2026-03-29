@@ -328,7 +328,9 @@ export class SessionMonitor extends EventEmitter {
         this.emit('session:status_changed', { session: updated, from: 'active', to: 'idle' });
       }
 
-      if (session.status === 'idle' && idleMs >= this.config.endedThresholdMs) {
+      // Only auto-end unmanaged idle sessions.
+      // Managed idle sessions are handled exclusively by the Housekeeper (15 min threshold + process termination).
+      if (session.status === 'idle' && session.type !== 'managed' && idleMs >= this.config.endedThresholdMs) {
         queries.updateSessionStatus(session.id, 'ended');
         const updated = queries.getSession(session.id)!;
         this.emit('session:status_changed', { session: updated, from: 'idle', to: 'ended' });

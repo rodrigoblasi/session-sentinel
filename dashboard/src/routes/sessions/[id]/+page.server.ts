@@ -1,5 +1,5 @@
 import type { PageServerLoad } from './$types';
-import { getSessionById, getRunsForSession, getEventsForSession, getTranscriptForSession } from '$lib/db';
+import { getSessionById, getRunsForSession, getEventsForSession, getTranscriptForSession, getNotificationsForSession } from '$lib/db';
 import { error } from '@sveltejs/kit';
 
 export const load: PageServerLoad = async ({ params }) => {
@@ -9,6 +9,7 @@ export const load: PageServerLoad = async ({ params }) => {
   const runs = getRunsForSession(params.id);
   const events = getEventsForSession(params.id);
   const transcript = getTranscriptForSession(params.id);
+  const notifications = getNotificationsForSession(params.id);
 
-  return { session, runs, events, transcript };
+  return { session, runs, events, transcript, notifications };
 };

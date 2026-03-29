@@ -1,0 +1,27 @@
+[Unit]
+Description=Session Sentinel — control plane for agent sessions
+After=network.target
+
+[Service]
+Type=simple
+User=blasi
+WorkingDirectory=/home/blasi/session-sentinel
+EnvironmentFile=/home/blasi/session-sentinel/deploy/sentinel.env
+ExecStart=/home/blasi/session-sentinel/node_modules/.bin/tsx src/main.ts
+Restart=on-failure
+RestartSec=5
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=sentinel
+
+# Security
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/home/blasi/.claude/projects /home/blasi/session-sentinel
+ProtectHome=tmpfs
+BindPaths=/home/blasi
+
+[Install]
+WantedBy=multi-user.target

@@ -361,6 +361,7 @@ export interface SessionDetailResponse {
   runs: Run[];
   events: SessionEvent[];
   transcript: TranscriptEntry[];
+  notifications: Notification[];
   available_actions: string[];
 }
 
@@ -389,3 +390,16 @@ export type WsOutgoingMessage =
   | { type: 'status_change'; sessionId: string; from: string; to: string }
   | { type: 'event'; event: SessionEvent }
   | { type: 'notification'; sessionId: string; trigger: string; destination: string };
+
+// --- Sprint 3: Housekeeping types ---
+
+export interface TerminateOptions {
+  actor?: string;
+  eventType?: string;
+  detail?: object;
+}
+
+export interface HousekeepConfig {
+  intervalMs?: number;
+  idleThresholdMs?: number;
+}

@@ -6,6 +6,7 @@
   "engines": { "node": ">=20" },
   "scripts": {
     "build": "tsc",
+    "start": "tsx src/main.ts",
     "dev": "tsx watch src/main.ts",
     "test": "vitest run",
     "test:watch": "vitest",

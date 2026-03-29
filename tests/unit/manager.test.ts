@@ -234,6 +234,33 @@ describe('SessionManager', () => {
         manager.terminateSession('ss-nonexistent')
       ).rejects.toThrow(/not found/i);
     });
+
+    it('uses custom actor and event type from options', async () => {
+      mockDriver = createMockDriver();
+      manager = new SessionManager({ driver: mockDriver });
+
+      const session = queries.upsertSession({
+        claude_session_id: 'cs-housekeep',
+        jsonl_path: '/tmp/test.jsonl',
+        status: 'idle',
+        type: 'managed',
+      });
+      queries.updateSessionOwner(session.id, 'jarvis');
+
+      await manager.terminateSession(session.id, {
+        actor: 'housekeeper',
+        eventType: 'housekeep',
+        detail: { reason: 'idle_auto_kill', idle_ms: 900_000 },
+      });
+
+      const events = queries.listEvents({ session_id: session.id });
+      const housekeepEvent = events.find(e => e.event_type === 'housekeep');
+      expect(housekeepEvent).toBeDefined();
+      expect(housekeepEvent!.actor).toBe('housekeeper');
+
+      const updated = queries.getSession(session.id)!;
+      expect(updated.status).toBe('ended');
+    });
   });
 
   describe('hasActiveTurn', () => {
