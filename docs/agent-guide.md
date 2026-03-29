@@ -541,3 +541,21 @@ curl http://localhost:3100/report | jq '{
 curl "http://localhost:3100/sessions?status=waiting"
 curl "http://localhost:3100/sessions?active=true&owner=my-agent"
 ```
+
+---
+
+## Best Practices
+
+- **Use `GET /report` for overview** instead of polling individual sessions. It returns everything you need in one call: summary stats, sessions needing attention, active sessions, and recent events.
+
+- **Use WebSocket for real-time updates** instead of polling. Connect to `ws://host:3100/ws` and react to `status_change` events. Polling is fine for periodic checks, but WebSocket is better for responsiveness.
+
+- **Let housekeeping handle idle sessions.** Managed sessions idle for 15 minutes are automatically terminated and remain resumable. Don't manually terminate sessions unless you have a specific reason (e.g., the task is complete, or you want to free resources immediately).
+
+- **Always provide a meaningful `owner`** when creating or resuming sessions. This is how Sentinel routes notifications to the right agent. Use a consistent name for your agent (e.g., `"openclaw"`, `"deploy-bot"`).
+
+- **Use `label` for identification.** Labels appear in the dashboard and make sessions easy to find. Use descriptive labels like `"fix-auth-test"` or `"refactor-api-layer"`.
+
+- **Check `available_actions` before acting.** The session detail response includes an `available_actions` array. Check it before attempting lifecycle operations — it tells you exactly what's valid for the current session state.
+
+- **Don't flood the API.** For typical agent workflows, check `GET /report` every 30-60 seconds or use WebSocket. Don't poll `GET /sessions/:id` in a tight loop.
