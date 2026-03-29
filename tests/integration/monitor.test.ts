@@ -159,4 +159,26 @@ describe('SessionMonitor', () => {
     expect(session?.status).toBe('waiting');
     expect(session?.pending_question).toBe('Which environment should I deploy to?');
   });
+
+  it('does not auto-end managed idle sessions (Housekeeper handles them)', async () => {
+    dbPath = path.join(os.tmpdir(), `sentinel-test-${Date.now()}.db`);
+    initDb(dbPath);
+
+    // Create a managed idle session directly in DB
+    const session = queries.upsertSession({
+      claude_session_id: 'cs-managed-idle',
+      jsonl_path: '/tmp/managed.jsonl',
+      status: 'idle',
+      type: 'managed',
+    });
+    queries.updateSessionOwner(session.id, 'jarvis');
+
+    // Age the session beyond endedThresholdMs
+    const past = new Date(Date.now() - 600_000).toISOString().replace('T', ' ').replace('Z', '');
+    const { getDb } = await import('../../src/db/connection.js');
+    getDb().prepare('UPDATE sessions SET updated_at = ? WHERE id = ?').run(past, session.id);
+
+    const current = queries.getSession(session.id)!;
+    expect(current.status).toBe('idle'); // still idle — Monitor won't touch managed sessions
+  });
 });

@@ -1,6 +1,7 @@
 import { SessionMonitor } from './monitor/index.js';
 import { SessionManager } from './manager/index.js';
 import { V1Driver } from './manager/v1-driver.js';
+import { Housekeeper } from './manager/housekeeper.js';
 import { AgentBridge } from './bridge/index.js';
 import { buildServer } from './api/server.js';
 import { API_PORT, API_HOST } from './shared/constants.js';
@@ -22,6 +23,8 @@ const manager = new SessionManager({
   notifyScript: config.notifyScript,
 });
 
+const housekeeper = new Housekeeper(manager);
+
 const bridge = new AgentBridge({
   monitor,
   notifyScript: config.notifyScript,
@@ -39,6 +42,7 @@ async function shutdown() {
   console.log('\nShutting down...');
   await app.close();
   bridge.stop();
+  housekeeper.stop();
   await manager.stop();
   await monitor.stop();
   process.exit(0);
@@ -51,6 +55,9 @@ process.on('SIGTERM', shutdown);
 console.log('Session Sentinel starting...');
 await monitor.start();
 console.log(`Monitoring ${monitor.getStats().filesWatched} files`);
+
+housekeeper.start();
+console.log('Housekeeper started (15 min idle auto-kill for managed sessions)');
 
 await app.listen({ port: config.apiPort, host: config.apiHost });
 console.log(`API listening on http://${config.apiHost}:${config.apiPort}`);
