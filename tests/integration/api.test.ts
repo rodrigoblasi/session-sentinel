@@ -258,6 +258,35 @@ describe('REST API', () => {
       expect(body.needs_attention).toHaveLength(1);
       expect(body.active_sessions).toHaveLength(1);
     });
+
+    it('by_project.ended_today only counts sessions ended today', async () => {
+      const db = getDb();
+
+      // Session ended today — should be counted
+      const s1 = queries.upsertSession({
+        claude_session_id: 'cs-rp1', jsonl_path: '/tmp/rp1.jsonl',
+        status: 'ended', project_name: 'proj-a',
+      });
+
+      // Session ended yesterday — should NOT be counted
+      const s2 = queries.upsertSession({
+        claude_session_id: 'cs-rp2', jsonl_path: '/tmp/rp2.jsonl',
+        status: 'ended', project_name: 'proj-a',
+      });
+      db.prepare("UPDATE sessions SET updated_at = datetime('now', '-1 day') WHERE id = ?").run(s2.id);
+
+      // Active session in same project — should appear in active count
+      queries.upsertSession({
+        claude_session_id: 'cs-rp3', jsonl_path: '/tmp/rp3.jsonl',
+        status: 'active', project_name: 'proj-a',
+      });
+
+      const response = await app.inject({ method: 'GET', url: '/report' });
+      const body = response.json();
+
+      expect(body.by_project['proj-a'].ended_today).toBe(1);
+      expect(body.by_project['proj-a'].active).toBe(1);
+    });
   });
 
   // --- Events ---

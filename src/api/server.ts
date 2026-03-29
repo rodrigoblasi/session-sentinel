@@ -9,6 +9,7 @@ import type { EventEmitter } from 'node:events';
 export interface ServerConfig {
   manager: SessionManager | null;
   monitor?: EventEmitter | null;
+  bridge?: EventEmitter | null;
   logger?: boolean;
 }
 
@@ -24,7 +25,7 @@ export function buildServer(config: ServerConfig): FastifyInstance {
   // the plugin is available when the route is defined.
   app.register(async (instance) => {
     await instance.register(websocket);
-    registerWebSocket(instance, config.monitor ?? null);
+    registerWebSocket(instance, config.monitor ?? null, config.bridge ?? null);
   });
 
   registerRoutes(app, config.manager);

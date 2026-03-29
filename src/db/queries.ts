@@ -1,5 +1,6 @@
 import { ulid } from 'ulid';
 import { getDb } from './connection.js';
+import { eventBus } from '../shared/event-bus.js';
 import type {
   Session, SessionUpsert, SessionFilters, SessionStatus,
   Run, RunInsert,
@@ -256,8 +257,8 @@ export function getSubAgents(sessionId: string): SubAgent[] {
 
 // --- Events ---
 
-export function insertEvent(data: EventInsert): void {
-  getDb().prepare(`
+export function insertEvent(data: EventInsert): SessionEvent {
+  const result = getDb().prepare(`
     INSERT INTO session_events (session_id, event_type, from_status, to_status, actor, detail)
     VALUES (?, ?, ?, ?, ?, ?)
   `).run(
@@ -268,6 +269,20 @@ export function insertEvent(data: EventInsert): void {
     data.actor ?? 'monitor',
     data.detail ? JSON.stringify(data.detail) : null,
   );
+
+  const event: SessionEvent = {
+    id: Number(result.lastInsertRowid),
+    session_id: data.session_id,
+    event_type: data.event_type,
+    from_status: data.from_status ?? null,
+    to_status: data.to_status ?? null,
+    actor: data.actor ?? 'monitor',
+    detail: data.detail ? JSON.stringify(data.detail) : null,
+    created_at: new Date().toISOString(),
+  };
+
+  eventBus.emit('event:created', event);
+  return event;
 }
 
 export function listEvents(filters: EventFilters = {}): SessionEvent[] {

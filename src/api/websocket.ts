@@ -2,34 +2,56 @@ import type { FastifyInstance } from 'fastify';
 import type { EventEmitter } from 'node:events';
 import type { WebSocket } from 'ws';
 import type { Session, SessionEvent, WsOutgoingMessage } from '../shared/types.js';
+import { eventBus } from '../shared/event-bus.js';
 
 const clients = new Set<WebSocket>();
 
-export function registerWebSocket(app: FastifyInstance, monitor: EventEmitter | null): void {
+export function registerWebSocket(
+  app: FastifyInstance,
+  monitor: EventEmitter | null,
+  bridge: EventEmitter | null,
+): void {
   app.get('/ws', { websocket: true }, (socket) => {
     clients.add(socket);
     socket.on('close', () => clients.delete(socket));
     socket.on('error', () => clients.delete(socket));
   });
 
-  if (!monitor) return;
-
-  monitor.on('session:discovered', (data: { session: Session }) => {
-    broadcast({ type: 'session_update', session: data.session });
-  });
-
-  monitor.on('session:status_changed', (data: { session: Session; from: string; to: string }) => {
-    broadcast({
-      type: 'status_change',
-      sessionId: data.session.id,
-      from: data.from,
-      to: data.to,
+  if (monitor) {
+    monitor.on('session:discovered', (data: { session: Session }) => {
+      broadcast({ type: 'session_update', session: data.session });
     });
+
+    monitor.on('session:status_changed', (data: { session: Session; from: string; to: string }) => {
+      broadcast({
+        type: 'status_change',
+        sessionId: data.session.id,
+        from: data.from,
+        to: data.to,
+      });
+    });
+
+    monitor.on('session:activity', (data: { session: Session }) => {
+      broadcast({ type: 'session_update', session: data.session });
+    });
+  }
+
+  // Broadcast new session events (from insertEvent in any module)
+  eventBus.on('event:created', (event: SessionEvent) => {
+    broadcast({ type: 'event', event });
   });
 
-  monitor.on('session:activity', (data: { session: Session }) => {
-    broadcast({ type: 'session_update', session: data.session });
-  });
+  // Broadcast notifications sent by the bridge
+  if (bridge) {
+    bridge.on('bridge:notification_sent', (data: { sessionId: string; trigger: string; destination: string }) => {
+      broadcast({
+        type: 'notification',
+        sessionId: data.sessionId,
+        trigger: data.trigger,
+        destination: data.destination,
+      });
+    });
+  }
 }
 
 function broadcast(message: WsOutgoingMessage): void {
