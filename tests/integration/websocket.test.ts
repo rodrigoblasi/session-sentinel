@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { buildServer } from '../../src/api/server.js';
 import { initDb, closeDb } from '../../src/db/connection.js';
+import * as queries from '../../src/db/queries.js';
 import { EventEmitter } from 'node:events';
 import WebSocket from 'ws';
 import type { FastifyInstance } from 'fastify';
@@ -12,13 +13,15 @@ describe('WebSocket /ws', () => {
   let app: FastifyInstance;
   let dbPath: string;
   let mockMonitor: EventEmitter;
+  let mockBridge: EventEmitter;
   let port: number;
 
   beforeAll(async () => {
     dbPath = path.join(os.tmpdir(), `sentinel-ws-${Date.now()}.db`);
     initDb(dbPath);
     mockMonitor = new EventEmitter();
-    app = buildServer({ manager: null, monitor: mockMonitor });
+    mockBridge = new EventEmitter();
+    app = buildServer({ manager: null, monitor: mockMonitor, bridge: mockBridge });
     await app.listen({ port: 0 });
     const address = app.server.address();
     port = typeof address === 'object' ? address!.port : 0;
@@ -136,5 +139,62 @@ describe('WebSocket /ws', () => {
     expect(message.sessionId).toBe('ss-disconnect');
 
     ws2.close();
+  });
+
+  it('broadcasts event type when insertEvent is called', async () => {
+    const session = queries.upsertSession({
+      claude_session_id: 'cs-ws-event',
+      jsonl_path: '/tmp/ws-event.jsonl',
+      status: 'active',
+    });
+
+    const ws = new WebSocket(`ws://localhost:${port}/ws`);
+    await new Promise<void>(resolve => ws.on('open', resolve));
+
+    const received = new Promise<any>(resolve => {
+      ws.on('message', (data) => resolve(JSON.parse(data.toString())));
+    });
+
+    queries.insertEvent({
+      session_id: session.id,
+      event_type: 'status_change',
+      from_status: 'active',
+      to_status: 'waiting',
+      actor: 'monitor',
+    });
+
+    const message = await received;
+    expect(message.type).toBe('event');
+    expect(message.event.session_id).toBe(session.id);
+    expect(message.event.event_type).toBe('status_change');
+    expect(message.event.from_status).toBe('active');
+    expect(message.event.to_status).toBe('waiting');
+    expect(message.event).toHaveProperty('id');
+    expect(message.event).toHaveProperty('created_at');
+
+    ws.close();
+  });
+
+  it('broadcasts notification type when bridge sends notification', async () => {
+    const ws = new WebSocket(`ws://localhost:${port}/ws`);
+    await new Promise<void>(resolve => ws.on('open', resolve));
+
+    const received = new Promise<any>(resolve => {
+      ws.on('message', (data) => resolve(JSON.parse(data.toString())));
+    });
+
+    mockBridge.emit('bridge:notification_sent', {
+      sessionId: 'ss-notif-test',
+      trigger: 'waiting',
+      destination: '#jarvis',
+    });
+
+    const message = await received;
+    expect(message.type).toBe('notification');
+    expect(message.sessionId).toBe('ss-notif-test');
+    expect(message.trigger).toBe('waiting');
+    expect(message.destination).toBe('#jarvis');
+
+    ws.close();
   });
 });

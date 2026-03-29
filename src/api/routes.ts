@@ -148,13 +148,14 @@ export function registerRoutes(app: FastifyInstance, manager: SessionManager | n
 
     // Group by project
     const allSessions = queries.listSessions({});
+    const today = new Date().toISOString().slice(0, 10);
     const byProject: Record<string, { active: number; waiting: number; ended_today: number }> = {};
     for (const s of allSessions) {
       const proj = s.project_name ?? 'unknown';
       if (!byProject[proj]) byProject[proj] = { active: 0, waiting: 0, ended_today: 0 };
       if (s.status === 'active') byProject[proj].active++;
       if (s.status === 'waiting') byProject[proj].waiting++;
-      if (s.status === 'ended') byProject[proj].ended_today++;
+      if (s.status === 'ended' && s.updated_at?.startsWith(today)) byProject[proj].ended_today++;
     }
 
     return {

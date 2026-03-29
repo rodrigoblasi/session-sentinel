@@ -34,6 +34,7 @@ const bridge = new AgentBridge({
 const app = buildServer({
   manager,
   monitor,
+  bridge,
   logger: true,
 });
 
