@@ -41,6 +41,7 @@ export function registerRoutes(app: FastifyInstance, manager: SessionManager | n
     const notifications = queries.listNotifications({ session_id: id });
     const available_actions = getAvailableActions(session);
 
+    // TODO: consider pagination if sub_agent count grows beyond ~50 per session
     const subAgents = queries.getSubAgents(id);
     const hierarchy: HierarchyBlock = {
       sub_agents: [...subAgents].reverse(),
