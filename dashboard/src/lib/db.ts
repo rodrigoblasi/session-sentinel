@@ -68,3 +68,9 @@ export function getEventsForSession(sessionId: string) {
 export function getTranscriptForSession(sessionId: string) {
   return getDb().prepare('SELECT * FROM transcript_cache WHERE session_id = ? ORDER BY turn ASC').all(sessionId);
 }
+
+export function getNotificationsForSession(sessionId: string) {
+  return getDb()
+    .prepare('SELECT * FROM notifications WHERE session_id = ? ORDER BY created_at DESC')
+    .all(sessionId);
+}

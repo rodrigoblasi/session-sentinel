@@ -38,9 +38,10 @@ export function registerRoutes(app: FastifyInstance, manager: SessionManager | n
     const runs = queries.getRuns(id);
     const events = queries.listEvents({ session_id: id, limit: 50 });
     const transcript = queries.getTranscript(id);
+    const notifications = queries.listNotifications({ session_id: id });
     const available_actions = getAvailableActions(session);
 
-    return { session, runs, events, transcript, available_actions };
+    return { session, runs, events, transcript, notifications, available_actions };
   });
 
   app.get('/sessions/:id/transcript', async (request, reply) => {

@@ -361,6 +361,7 @@ export interface SessionDetailResponse {
   runs: Run[];
   events: SessionEvent[];
   transcript: TranscriptEntry[];
+  notifications: Notification[];
   available_actions: string[];
 }
 
