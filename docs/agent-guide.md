@@ -132,7 +132,7 @@ curl "http://localhost:3100/sessions?status=waiting&owner=my-agent"
 
 #### `GET /sessions/:id`
 
-Full session detail with runs, events, transcript, notifications, and available actions.
+Full session detail with runs, events, transcript, notifications, and available actions. Events are limited to the 50 most recent — use `GET /events?session_id=:id` for the full log.
 
 ```bash
 curl http://localhost:3100/sessions/ss-01JQXYZ1234567890ABCDEF
@@ -193,7 +193,7 @@ curl http://localhost:3100/sessions/ss-01JQXYZ1234567890ABCDEF
       "created_at": "2026-03-29T10:35:01.000Z"
     }
   ],
-  "available_actions": ["send_message", "terminate"]
+  "available_actions": ["send_message", "terminate", "resume"]
 }
 ```
 
@@ -226,7 +226,7 @@ Create a new managed session.
 | `systemPrompt` | no | string | Custom system prompt |
 | `maxBudgetUsd` | no | number | Maximum spend for this session |
 
-Provide either `project` or `cwd` to specify where the session runs. If neither is provided, the session runs in the Sentinel's own working directory.
+Either `project` or `cwd` must be provided. If both are omitted, the request returns `400` with `{ "error": "Either project or cwd must be provided" }`. If `project` is provided but not found in the registry, the request also returns `400`. Projects are auto-discovered from prior session activity — use `GET /projects` to see known names.
 
 ```bash
 curl -X POST http://localhost:3100/sessions \
@@ -330,6 +330,8 @@ curl http://localhost:3100/report
 }
 ```
 
+> **Note:** `summary.ended_today` and `summary.errors_today` are filtered to the current UTC date. `by_project[x].ended_today` currently reflects all sessions with ended status for that project regardless of date — this inconsistency will be fixed in a future release.
+
 ### Events
 
 #### `GET /events`
@@ -392,13 +394,13 @@ curl http://localhost:3100/projects
 
 #### `ws://<host>:3100/ws`
 
-Real-time event stream. Connect once and receive all session events as they happen.
+Real-time event stream. Connect once and receive session events as they happen. Connections are not automatically re-established after a disconnect — implement reconnect logic with backoff if using WebSocket for continuous monitoring. For periodic checks, polling `GET /report` is simpler and more resilient.
 
 ```bash
 wscat -c ws://localhost:3100/ws
 ```
 
-Four event types are broadcast:
+Two event types are currently broadcast:
 
 **`session_update`** — A session was discovered or had activity:
 ```json
@@ -408,16 +410,6 @@ Four event types are broadcast:
 **`status_change`** — A session changed status:
 ```json
 { "type": "status_change", "sessionId": "ss-01JQXYZ...", "from": "active", "to": "waiting" }
-```
-
-**`event`** — A new session event was recorded:
-```json
-{ "type": "event", "event": { "id": 42, "session_id": "ss-01JQXYZ...", "event_type": "status_change", "..." : "..." } }
-```
-
-**`notification`** — A notification was sent:
-```json
-{ "type": "notification", "sessionId": "ss-01JQXYZ...", "trigger": "waiting", "destination": "#my-agent" }
 ```
 
 ---
@@ -436,9 +428,13 @@ Other status changes (active, idle, ended) do not trigger notifications. Houseke
 
 ### Delivery
 
-Each notification is delivered to two destinations:
-1. **Owner's Discord thread** (`#<owner-name>`) — wakes the agent that owns the session
+Each notification is delivered to two destinations via the `agent-notify.sh` script:
+1. **Owner's Discord channel** (`#<owner-name>`) — wakes the agent that owns the session
 2. **#sentinel-log** — audit channel for the operator
+
+The notification arrives as a Discord message containing the session ID, status, project, branch, and either the pending question (for `waiting`) or error details (for `error`), plus an `apiUrl` link to the session detail endpoint.
+
+The `owner` value you provide when creating or resuming a session must match a Discord channel name known to `agent-notify.sh`. If the channel doesn't exist, the notification delivery will fail silently (recorded as `delivered: false` in the notification log).
 
 ### Payload
 
@@ -556,6 +552,6 @@ curl "http://localhost:3100/sessions?active=true&owner=my-agent"
 
 - **Use `label` for identification.** Labels appear in the dashboard and make sessions easy to find. Use descriptive labels like `"fix-auth-test"` or `"refactor-api-layer"`.
 
-- **Check `available_actions` before acting.** The session detail response includes an `available_actions` array. Check it before attempting lifecycle operations — it tells you exactly what's valid for the current session state.
+- **Check `available_actions` before acting.** The session detail response includes an `available_actions` array with possible values: `send_message`, `terminate`, and `resume`. Check it before attempting lifecycle operations — it tells you exactly what's valid for the current session state.
 
 - **Don't flood the API.** For typical agent workflows, check `GET /report` every 30-60 seconds or use WebSocket. Don't poll `GET /sessions/:id` in a tight loop.
