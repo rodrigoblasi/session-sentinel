@@ -52,3 +52,19 @@ export function getStats() {
     totalSessions: sessionCount.count,
   };
 }
+
+export function getSessionById(id: string) {
+  return getDb().prepare('SELECT * FROM sessions WHERE id = ?').get(id);
+}
+
+export function getRunsForSession(sessionId: string) {
+  return getDb().prepare('SELECT * FROM runs WHERE session_id = ? ORDER BY run_number ASC').all(sessionId);
+}
+
+export function getEventsForSession(sessionId: string) {
+  return getDb().prepare('SELECT * FROM session_events WHERE session_id = ? ORDER BY created_at DESC LIMIT 50').all(sessionId);
+}
+
+export function getTranscriptForSession(sessionId: string) {
+  return getDb().prepare('SELECT * FROM transcript_cache WHERE session_id = ? ORDER BY turn ASC').all(sessionId);
+}
