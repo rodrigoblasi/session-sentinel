@@ -91,6 +91,37 @@ describe('REST API', () => {
       const response = await app.inject({ method: 'GET', url: '/sessions?owner=jarvis' });
       expect(response.json()).toHaveLength(1);
     });
+
+    it('includes sub_agent_count for each session', async () => {
+      const session = queries.upsertSession({
+        claude_session_id: 'cs-count',
+        jsonl_path: '/tmp/count.jsonl',
+        status: 'active',
+      });
+      queries.upsertSubAgent({
+        id: 'sa-c1', session_id: session.id,
+        pattern: 'regular', jsonl_path: '/tmp/sac1.jsonl',
+      });
+      queries.upsertSubAgent({
+        id: 'sa-c2', session_id: session.id,
+        pattern: 'compact', jsonl_path: '/tmp/sac2.jsonl',
+      });
+
+      const response = await app.inject({ method: 'GET', url: '/sessions' });
+      expect(response.statusCode).toBe(200);
+      expect(response.json()[0].sub_agent_count).toBe(2);
+    });
+
+    it('returns sub_agent_count 0 for sessions without sub-agents', async () => {
+      queries.upsertSession({
+        claude_session_id: 'cs-no-sa',
+        jsonl_path: '/tmp/nosa.jsonl',
+        status: 'active',
+      });
+
+      const response = await app.inject({ method: 'GET', url: '/sessions' });
+      expect(response.json()[0].sub_agent_count).toBe(0);
+    });
   });
 
   // --- Session detail ---

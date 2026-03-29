@@ -4,7 +4,7 @@ import { eventBus } from '../shared/event-bus.js';
 import type {
   Session, SessionUpsert, SessionFilters, SessionStatus,
   Run, RunInsert,
-  SubAgent, SubAgentUpsert,
+  SubAgent, SubAgentUpsert, SubAgentTokenTotals,
   SessionEvent, EventInsert, EventFilters,
   TranscriptInsert, TranscriptEntry,
   TokenDelta,
@@ -100,7 +100,10 @@ export function listSessions(filters: SessionFilters = {}): Session[] {
   const limit = filters.limit ? `LIMIT ${filters.limit}` : '';
 
   return getDb()
-    .prepare(`SELECT * FROM sessions ${where} ORDER BY updated_at DESC ${limit}`)
+    .prepare(
+      `SELECT s.*, (SELECT COUNT(*) FROM sub_agents WHERE session_id = s.id) AS sub_agent_count
+       FROM sessions s ${where} ORDER BY s.updated_at DESC ${limit}`,
+    )
     .all(...params) as Session[];
 }
 
@@ -253,6 +256,18 @@ export function getSubAgents(sessionId: string): SubAgent[] {
   return getDb()
     .prepare('SELECT * FROM sub_agents WHERE session_id = ? ORDER BY started_at')
     .all(sessionId) as SubAgent[];
+}
+
+export function getSubAgentTokenTotals(sessionId: string): SubAgentTokenTotals {
+  return getDb().prepare(`
+    SELECT
+      COALESCE(SUM(input_tokens), 0) AS input,
+      COALESCE(SUM(output_tokens), 0) AS output,
+      COALESCE(SUM(cache_read_tokens), 0) AS cache_read,
+      COALESCE(SUM(cache_create_tokens), 0) AS cache_create
+    FROM sub_agents
+    WHERE session_id = ?
+  `).get(sessionId) as SubAgentTokenTotals;
 }
 
 // --- Events ---
