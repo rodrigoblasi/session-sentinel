@@ -461,3 +461,83 @@ The `GET /sessions/:id` detail response includes a `notifications` array with th
 ```bash
 curl http://localhost:3100/sessions/ss-01JQXYZ... | jq '.notifications'
 ```
+
+---
+
+## Common Workflows
+
+### 1. Create a session and monitor it
+
+```bash
+# Create a managed session
+curl -X POST http://localhost:3100/sessions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "Fix the failing test in src/auth.ts",
+    "owner": "my-agent",
+    "cwd": "/home/user/my-project",
+    "label": "fix-auth-test"
+  }'
+# Returns 201 with session object — note the "id" field
+
+# Poll for status changes
+curl http://localhost:3100/sessions/ss-01JQXYZ...
+
+# Or connect via WebSocket for real-time updates
+wscat -c ws://localhost:3100/ws
+# Receive: {"type":"status_change","sessionId":"ss-01JQXYZ...","from":"starting","to":"active"}
+```
+
+### 2. Handle a waiting notification
+
+When your agent receives a notification that a session is `waiting`:
+
+```bash
+# 1. Get full session context
+curl http://localhost:3100/sessions/ss-01JQXYZ... | jq '{
+  question: .session.pending_question,
+  project: .session.project_name,
+  branch: .session.git_branch,
+  actions: .available_actions
+}'
+
+# 2. Respond to the question
+curl -X POST http://localhost:3100/sessions/ss-01JQXYZ.../message \
+  -H "Content-Type: application/json" \
+  -d '{ "message": "Yes, proceed with the refactor" }'
+# Returns 202 — session will resume processing
+```
+
+### 3. Resume an ended session
+
+```bash
+# Check if the session can be resumed
+curl http://localhost:3100/sessions/ss-01JQXYZ... | jq '{
+  status: .session.status,
+  can_resume: .session.can_resume,
+  actions: .available_actions
+}'
+
+# Resume with a new prompt
+curl -X POST http://localhost:3100/sessions/ss-01JQXYZ.../resume \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "Continue where you left off — the test should now pass after the config change",
+    "owner": "my-agent"
+  }'
+# Returns 200 with updated session object
+```
+
+### 4. Check what needs attention
+
+```bash
+# Quick overview — summary + sessions needing action
+curl http://localhost:3100/report | jq '{
+  summary: .summary,
+  needs_attention: [.needs_attention[] | {id, status, project: .project_name, question: .pending_question}]
+}'
+
+# Or filter for specific states
+curl "http://localhost:3100/sessions?status=waiting"
+curl "http://localhost:3100/sessions?active=true&owner=my-agent"
+```
