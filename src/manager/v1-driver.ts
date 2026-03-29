@@ -5,12 +5,15 @@ export class V1Driver implements SessionDriver {
   startTurn(opts: TurnOpts): TurnHandle {
     const options: Record<string, unknown> = {
       cwd: opts.cwd,
-      allowDangerouslySkipPermissions: true,
     };
+
+    if (opts.permissionMode) {
+      options.permissionMode = opts.permissionMode;
+      options.allowDangerouslySkipPermissions = opts.permissionMode === 'bypassPermissions';
+    }
 
     if (opts.model) options.model = opts.model;
     if (opts.effort) options.effort = opts.effort;
-    if (opts.permissionMode) options.permissionMode = opts.permissionMode;
     if (opts.allowedTools) options.allowedTools = opts.allowedTools;
     if (opts.disallowedTools) options.disallowedTools = opts.disallowedTools;
     if (opts.systemPrompt) options.systemPrompt = opts.systemPrompt;
