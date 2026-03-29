@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { invalidateAll } from '$app/navigation';
 
   let { data } = $props();
@@ -29,10 +29,25 @@
     return `${Math.floor(hours / 24)}d ago`;
   }
 
-  // Auto-refresh every 3 seconds
+  let ws: WebSocket | null = null;
+
   onMount(() => {
-    const interval = setInterval(() => invalidateAll(), 3000);
-    return () => clearInterval(interval);
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    ws = new WebSocket(`${protocol}//localhost:3100/ws`);
+
+    ws.onmessage = () => {
+      // Any WebSocket message triggers a data refresh
+      invalidateAll();
+    };
+
+    ws.onerror = () => {
+      // Fallback to polling if WebSocket fails
+      console.warn('WebSocket error, falling back to polling');
+    };
+  });
+
+  onDestroy(() => {
+    if (ws) ws.close();
   });
 </script>
 
@@ -85,7 +100,7 @@
                 {session.status}
               </span>
             </td>
-            <td>{session.label ?? session.claude_session_id.slice(0, 8)}</td>
+            <td><a href="/sessions/{session.id}">{session.label ?? session.claude_session_id.slice(0, 8)}</a></td>
             <td>{session.project_name ?? '—'}</td>
             <td>{session.type}</td>
             <td>{session.owner ?? '—'}</td>

@@ -29,3 +29,25 @@ export const RUN_START_HOOKS: Record<string, RunStartType> = {
   'SessionStart:resume': 'resume',
   'SessionStart:compact': 'compact',
 };
+
+// --- Sprint 2 constants ---
+
+export const DEFAULT_MANAGER_CONFIG = {
+  defaultModel: 'claude-sonnet-4-6',
+  defaultEffort: 'high',
+  defaultPermissionMode: 'bypassPermissions',
+  defaultAllowedTools: [
+    'Read', 'Glob', 'Grep', 'Bash', 'Edit', 'Write',
+    'Agent', 'NotebookEdit', 'WebFetch', 'WebSearch',
+  ],
+} as const;
+
+export const API_PORT = 3100;
+export const API_HOST = '0.0.0.0';
+
+export const NOTIFICATION_CHANNELS = {
+  OWNER_THREAD: 'discord_owner',
+  SENTINEL_LOG: 'discord_sentinel_log',
+} as const;
+
+export const NOTIFICATION_TRIGGERS = new Set(['waiting', 'error']);
