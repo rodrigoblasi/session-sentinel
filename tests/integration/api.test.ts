@@ -347,6 +347,37 @@ describe('REST API', () => {
       expect(body.active_sessions).toHaveLength(1);
     });
 
+    it('includes sub_agent_count in needs_attention and active_sessions', async () => {
+      const s1 = queries.upsertSession({
+        claude_session_id: 'cs-rep-act',
+        jsonl_path: '/tmp/rep-act.jsonl',
+        status: 'active',
+      });
+      queries.upsertSubAgent({
+        id: 'sa-rep1', session_id: s1.id,
+        pattern: 'regular', jsonl_path: '/tmp/sa-rep1.jsonl',
+      });
+      queries.upsertSubAgent({
+        id: 'sa-rep2', session_id: s1.id,
+        pattern: 'compact', jsonl_path: '/tmp/sa-rep2.jsonl',
+      });
+
+      const s2 = queries.upsertSession({
+        claude_session_id: 'cs-rep-wait',
+        jsonl_path: '/tmp/rep-wait.jsonl',
+        status: 'waiting',
+      });
+
+      const response = await app.inject({ method: 'GET', url: '/report' });
+      const body = response.json();
+
+      const activeS1 = body.active_sessions.find((s: any) => s.id === s1.id);
+      expect(activeS1.sub_agent_count).toBe(2);
+
+      const waitingS2 = body.needs_attention.find((s: any) => s.id === s2.id);
+      expect(waitingS2.sub_agent_count).toBe(0);
+    });
+
     it('by_project.ended_today only counts sessions ended today', async () => {
       const db = getDb();
 
