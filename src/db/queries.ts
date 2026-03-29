@@ -5,8 +5,9 @@ import type {
   Run, RunInsert,
   SubAgent, SubAgentUpsert,
   SessionEvent, EventInsert, EventFilters,
-  TranscriptInsert,
+  TranscriptInsert, TranscriptEntry,
   TokenDelta,
+  NotificationInsert, NotificationFilters, Notification,
 } from '../shared/types.js';
 
 // --- Sessions ---
@@ -364,4 +365,167 @@ export function upsertProject(name: string, cwd: string): void {
       session_count = projects.session_count + 1,
       last_session_at = datetime('now')
   `).run(name, cwd);
+}
+
+// --- Managed session helpers (Sprint 2) ---
+
+export function updateSessionOwner(id: string, owner: string): void {
+  getDb().prepare(`
+    UPDATE sessions
+    SET owner = ?, type = 'managed', updated_at = datetime('now')
+    WHERE id = ?
+  `).run(owner, id);
+}
+
+// --- Notifications (Sprint 2) ---
+
+export function insertNotification(data: NotificationInsert): void {
+  getDb().prepare(`
+    INSERT INTO notifications (session_id, channel, destination, trigger, payload, delivered)
+    VALUES (@session_id, @channel, @destination, @trigger, @payload, @delivered)
+  `).run({
+    session_id: data.session_id,
+    channel: data.channel,
+    destination: data.destination,
+    trigger: data.trigger,
+    payload: JSON.stringify(data.payload),
+    delivered: data.delivered ? 1 : 0,
+  });
+}
+
+export function listNotifications(filters: NotificationFilters = {}): Notification[] {
+  const conditions: string[] = [];
+  const params: Record<string, unknown> = {};
+
+  if (filters.session_id) {
+    conditions.push('session_id = @session_id');
+    params.session_id = filters.session_id;
+  }
+  if (filters.channel) {
+    conditions.push('channel = @channel');
+    params.channel = filters.channel;
+  }
+  if (filters.delivered !== undefined) {
+    conditions.push('delivered = @delivered');
+    params.delivered = filters.delivered ? 1 : 0;
+  }
+
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  const limit = filters.limit ?? 100;
+
+  const rows = getDb().prepare(`
+    SELECT * FROM notifications ${where} ORDER BY created_at DESC LIMIT ${limit}
+  `).all(params) as Notification[];
+
+  return rows.map(r => ({ ...r, delivered: Boolean(r.delivered) })) as Notification[];
+}
+
+// --- Transcript retrieval (Sprint 2) ---
+
+export function getTranscript(sessionId: string, limit?: number): TranscriptEntry[] {
+  if (limit) {
+    return getDb().prepare(`
+      SELECT * FROM (
+        SELECT * FROM transcript_cache
+        WHERE session_id = ?
+        ORDER BY turn DESC
+        LIMIT ?
+      ) ORDER BY turn ASC
+    `).all(sessionId, limit) as TranscriptEntry[];
+  }
+
+  return getDb().prepare(`
+    SELECT * FROM transcript_cache
+    WHERE session_id = ?
+    ORDER BY turn ASC
+  `).all(sessionId) as TranscriptEntry[];
+}
+
+// --- Runs retrieval (Sprint 2) ---
+
+export function getRuns(sessionId: string): Run[] {
+  return getDb().prepare(`
+    SELECT * FROM runs WHERE session_id = ? ORDER BY run_number ASC
+  `).all(sessionId) as Run[];
+}
+
+// --- Projects (Sprint 2) ---
+
+export function listProjects(): Array<{
+  name: string;
+  cwd: string;
+  discovered_at: string;
+  last_session_at: string | null;
+  session_count: number;
+  alias: string | null;
+}> {
+  return getDb().prepare(`
+    SELECT * FROM projects ORDER BY last_session_at DESC
+  `).all() as Array<{
+    name: string;
+    cwd: string;
+    discovered_at: string;
+    last_session_at: string | null;
+    session_count: number;
+    alias: string | null;
+  }>;
+}
+
+export function getProjectByName(name: string): {
+  name: string;
+  cwd: string;
+  discovered_at: string;
+  last_session_at: string | null;
+  session_count: number;
+  alias: string | null;
+} | null {
+  return (getDb().prepare(`
+    SELECT * FROM projects WHERE name = ?
+  `).get(name) as {
+    name: string;
+    cwd: string;
+    discovered_at: string;
+    last_session_at: string | null;
+    session_count: number;
+    alias: string | null;
+  } | undefined) ?? null;
+}
+
+// --- Report stats (Sprint 2) ---
+
+export function getReportStats(): {
+  total_sessions: number;
+  active: number;
+  waiting: number;
+  idle: number;
+  ended_today: number;
+  errors_today: number;
+  total_tokens_today: number;
+} {
+  const db = getDb();
+
+  const counts = db.prepare(`
+    SELECT
+      COUNT(*) as total_sessions,
+      SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active,
+      SUM(CASE WHEN status = 'waiting' THEN 1 ELSE 0 END) as waiting,
+      SUM(CASE WHEN status = 'idle' THEN 1 ELSE 0 END) as idle
+    FROM sessions
+  `).get() as { total_sessions: number; active: number; waiting: number; idle: number };
+
+  const today = db.prepare(`
+    SELECT
+      SUM(CASE WHEN status = 'ended' THEN 1 ELSE 0 END) as ended_today,
+      SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END) as errors_today,
+      SUM(COALESCE(output_tokens, 0)) as total_tokens_today
+    FROM sessions
+    WHERE date(updated_at) = date('now')
+  `).get() as { ended_today: number; errors_today: number; total_tokens_today: number };
+
+  return {
+    ...counts,
+    ended_today: today.ended_today ?? 0,
+    errors_today: today.errors_today ?? 0,
+    total_tokens_today: today.total_tokens_today ?? 0,
+  };
 }
