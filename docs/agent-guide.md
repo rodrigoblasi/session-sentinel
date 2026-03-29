@@ -419,3 +419,45 @@ Four event types are broadcast:
 ```json
 { "type": "notification", "sessionId": "ss-01JQXYZ...", "trigger": "waiting", "destination": "#my-agent" }
 ```
+
+---
+
+## Notification Model
+
+Notifications are automatic for managed sessions — no configuration needed. Sentinel notifies the session owner when a session enters `waiting` or `error` status.
+
+### Triggers
+
+Only two statuses trigger notifications:
+- **waiting** — the session asked a question (via AskUserQuestion) and is blocked until someone responds
+- **error** — an API error, crash, or unrecoverable failure
+
+Other status changes (active, idle, ended) do not trigger notifications. Housekeeping auto-kills are silent.
+
+### Delivery
+
+Each notification is delivered to two destinations:
+1. **Owner's Discord thread** (`#<owner-name>`) — wakes the agent that owns the session
+2. **#sentinel-log** — audit channel for the operator
+
+### Payload
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `sessionId` | string | Session ID (e.g., `ss-01JQXYZ...`) |
+| `label` | string\|null | Session label if provided at creation |
+| `status` | string | Trigger status: `waiting` or `error` |
+| `project` | string\|null | Project name |
+| `gitBranch` | string\|null | Git branch at time of notification |
+| `pendingQuestion` | string\|null | The question the session is asking (only for `waiting`) |
+| `errorMessage` | string\|null | Error details (only for `error`) |
+| `waitingSince` | string\|null | ISO 8601 timestamp when waiting started |
+| `apiUrl` | string | Direct link to session detail endpoint |
+
+### Viewing Notification History
+
+The `GET /sessions/:id` detail response includes a `notifications` array with the full delivery log:
+
+```bash
+curl http://localhost:3100/sessions/ss-01JQXYZ... | jq '.notifications'
+```
