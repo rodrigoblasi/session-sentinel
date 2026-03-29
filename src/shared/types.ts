@@ -242,3 +242,150 @@ export interface MonitorStats {
   sessionsByStatus: Record<SessionStatus, number>;
   totalTokensToday: number;
 }
+
+// --- Session Driver types (Sprint 2, ADR-0001) ---
+
+export interface TurnOpts {
+  prompt: string;
+  cwd: string;
+  model?: string;
+  effort?: string;
+  permissionMode?: string;
+  allowedTools?: string[];
+  disallowedTools?: string[];
+  systemPrompt?: string | { type: 'preset'; preset: 'claude_code'; append?: string };
+  maxBudgetUsd?: number;
+  maxTurns?: number;
+  claudeSessionId?: string;
+  resumeSessionId?: string;
+}
+
+export type StreamEvent =
+  | { type: 'init'; sessionId: string; model: string; cwd: string; tools: string[]; permissionMode: string }
+  | { type: 'text'; text: string; sessionId: string }
+  | { type: 'tool_use'; toolName: string; toolInput: unknown; sessionId: string }
+  | { type: 'tool_progress'; toolName: string; elapsedSeconds: number; sessionId: string }
+  | { type: 'result_success'; result: string; costUsd: number; numTurns: number; durationMs: number; sessionId: string }
+  | { type: 'result_error'; errors: string[]; costUsd: number; sessionId: string }
+  | { type: 'status'; status: string; sessionId: string };
+
+export interface TurnHandle {
+  readonly events: AsyncGenerator<StreamEvent, void>;
+  interrupt(): Promise<void>;
+}
+
+export interface SessionDriver {
+  startTurn(opts: TurnOpts): TurnHandle;
+}
+
+// --- Session Manager types (Sprint 2) ---
+
+export interface CreateSessionInput {
+  prompt: string;
+  project?: string;
+  cwd?: string;
+  owner: string;
+  label?: string;
+  model?: string;
+  effort?: string;
+  allowedTools?: string[];
+  systemPrompt?: string;
+  maxBudgetUsd?: number;
+}
+
+export interface ResumeSessionInput {
+  prompt: string;
+  owner: string;
+  model?: string;
+  effort?: string;
+}
+
+export interface SendMessageInput {
+  message: string;
+}
+
+export interface ManagerConfig {
+  driver: SessionDriver;
+  notifyScript?: string;
+  defaultModel?: string;
+  defaultEffort?: string;
+  defaultPermissionMode?: string;
+  defaultAllowedTools?: string[];
+}
+
+// --- Notification types (Sprint 2) ---
+
+export interface NotificationPayload {
+  sessionId: string;
+  label: string | null;
+  status: string;
+  project: string | null;
+  gitBranch: string | null;
+  pendingQuestion: string | null;
+  errorMessage: string | null;
+  waitingSince: string | null;
+  apiUrl: string;
+}
+
+export interface NotificationInsert {
+  session_id: string;
+  channel: string;
+  destination: string;
+  trigger: string;
+  payload: NotificationPayload;
+  delivered: boolean;
+}
+
+export interface NotificationFilters {
+  session_id?: string;
+  channel?: string;
+  delivered?: boolean;
+  limit?: number;
+}
+
+export interface Notification {
+  id: number;
+  session_id: string;
+  channel: string;
+  destination: string;
+  trigger: string;
+  payload: string;
+  delivered: boolean;
+  created_at: string;
+}
+
+// --- API types (Sprint 2) ---
+
+export interface SessionDetailResponse {
+  session: Session;
+  runs: Run[];
+  events: SessionEvent[];
+  transcript: TranscriptEntry[];
+  available_actions: string[];
+}
+
+export interface ReportSummary {
+  total_sessions: number;
+  active: number;
+  waiting: number;
+  idle: number;
+  ended_today: number;
+  errors_today: number;
+  total_tokens_today: number;
+}
+
+export interface ReportResponse {
+  summary: ReportSummary;
+  needs_attention: Session[];
+  active_sessions: Session[];
+  recent_events: SessionEvent[];
+  by_project: Record<string, { active: number; waiting: number; ended_today: number }>;
+}
+
+// --- WebSocket types (Sprint 2) ---
+
+export type WsOutgoingMessage =
+  | { type: 'session_update'; session: Session }
+  | { type: 'status_change'; sessionId: string; from: string; to: string }
+  | { type: 'event'; event: SessionEvent }
+  | { type: 'notification'; sessionId: string; trigger: string; destination: string };

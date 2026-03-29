@@ -12,3 +12,22 @@ export interface MonitorEvents {
 }
 
 export type MonitorEventName = keyof MonitorEvents;
+
+// --- Sprint 2 events ---
+
+export interface ManagerEvents {
+  'manager:session_created': { session: Session };
+  'manager:turn_started': { sessionId: string; prompt: string };
+  'manager:turn_completed': { sessionId: string; success: boolean };
+  'manager:session_terminated': { sessionId: string };
+  'manager:error': { error: Error; sessionId?: string };
+}
+
+export type ManagerEventName = keyof ManagerEvents;
+
+export interface BridgeEvents {
+  'bridge:notification_sent': { sessionId: string; destination: string; trigger: string };
+  'bridge:notification_failed': { sessionId: string; destination: string; error: Error };
+}
+
+export type BridgeEventName = keyof BridgeEvents;
