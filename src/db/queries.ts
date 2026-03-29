@@ -24,7 +24,12 @@ export function upsertSession(data: SessionUpsert): Session {
     const params: unknown[] = [];
 
     for (const [key, value] of Object.entries(data)) {
-      if (key === 'claude_session_id' || key === 'jsonl_path' || value === undefined) continue;
+      if (key === 'claude_session_id' || value === undefined) continue;
+      // Allow jsonl_path update only if the existing value is empty
+      if (key === 'jsonl_path') {
+        const currentSession = db.prepare('SELECT jsonl_path FROM sessions WHERE id = ?').get(existing.id) as { jsonl_path: string };
+        if (currentSession.jsonl_path && currentSession.jsonl_path !== '') continue;
+      }
       sets.push(`${key} = ?`);
       params.push(value);
     }
