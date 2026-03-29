@@ -123,6 +123,7 @@ curl "http://localhost:3100/sessions?status=waiting&owner=my-agent"
     "error_message": null,
     "can_resume": true,
     "parent_session_id": null,
+    "sub_agent_count": 3,
     "created_at": "2026-03-29T10:30:00.000Z",
     "updated_at": "2026-03-29T10:35:12.000Z",
     "ended_at": null
@@ -132,7 +133,7 @@ curl "http://localhost:3100/sessions?status=waiting&owner=my-agent"
 
 #### `GET /sessions/:id`
 
-Full session detail with runs, events, transcript, notifications, and available actions. Events are limited to the 50 most recent — use `GET /events?session_id=:id` for the full log.
+Full session detail with runs, events, transcript, notifications, available actions, and sub-agent hierarchy. Events are limited to the 50 most recent — use `GET /events?session_id=:id` for the full log.
 
 ```bash
 curl http://localhost:3100/sessions/ss-01JQXYZ1234567890ABCDEF
@@ -193,7 +194,32 @@ curl http://localhost:3100/sessions/ss-01JQXYZ1234567890ABCDEF
       "created_at": "2026-03-29T10:35:01.000Z"
     }
   ],
-  "available_actions": ["send_message", "terminate", "resume"]
+  "available_actions": ["send_message", "terminate", "resume"],
+  "hierarchy": {
+    "sub_agents": [
+      {
+        "id": "sa-explore-abc123",
+        "session_id": "ss-01JQXYZ...",
+        "pattern": "regular",
+        "agent_type": "Explore",
+        "description": "Search for auth middleware",
+        "jsonl_path": "/home/user/.claude/projects/.../sa-explore.jsonl",
+        "input_tokens": 5000,
+        "output_tokens": 3000,
+        "cache_read_tokens": 1000,
+        "cache_create_tokens": 500,
+        "started_at": "2026-03-29T10:32:00.000Z",
+        "ended_at": "2026-03-29T10:34:00.000Z"
+      }
+    ],
+    "sub_agent_count": 1,
+    "total_sub_agent_tokens": {
+      "input": 5000,
+      "output": 3000,
+      "cache_read": 1000,
+      "cache_create": 500
+    }
+  }
 }
 ```
 
@@ -315,10 +341,10 @@ curl http://localhost:3100/report
     "total_tokens_today": 245000
   },
   "needs_attention": [
-    { "id": "ss-01JQABC...", "status": "waiting", "project_name": "wow-bot", "pending_question": "Which database migration strategy?" }
+    { "id": "ss-01JQABC...", "status": "waiting", "project_name": "wow-bot", "pending_question": "Which database migration strategy?", "sub_agent_count": 2 }
   ],
   "active_sessions": [
-    { "id": "ss-01JQDEF...", "status": "active", "project_name": "session-sentinel" }
+    { "id": "ss-01JQDEF...", "status": "active", "project_name": "session-sentinel", "sub_agent_count": 5 }
   ],
   "recent_events": [
     { "id": 42, "session_id": "ss-01JQABC...", "event_type": "status_change", "from_status": "active", "to_status": "waiting", "actor": "monitor", "created_at": "2026-03-29T10:35:00.000Z" }

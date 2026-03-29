@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import * as queries from '../db/queries.js';
 import type { SessionManager } from '../manager/index.js';
-import type { SessionFilters, EventFilters } from '../shared/types.js';
+import type { SessionFilters, EventFilters, HierarchyBlock } from '../shared/types.js';
 
 export function registerRoutes(app: FastifyInstance, manager: SessionManager | null): void {
 
@@ -41,7 +41,15 @@ export function registerRoutes(app: FastifyInstance, manager: SessionManager | n
     const notifications = queries.listNotifications({ session_id: id });
     const available_actions = getAvailableActions(session);
 
-    return { session, runs, events, transcript, notifications, available_actions };
+    // TODO: consider pagination if sub_agent count grows beyond ~50 per session
+    const subAgents = queries.getSubAgents(id);
+    const hierarchy: HierarchyBlock = {
+      sub_agents: [...subAgents].reverse(),
+      sub_agent_count: subAgents.length,
+      total_sub_agent_tokens: queries.getSubAgentTokenTotals(id),
+    };
+
+    return { session, runs, events, transcript, notifications, available_actions, hierarchy };
   });
 
   app.get('/sessions/:id/transcript', async (request, reply) => {
