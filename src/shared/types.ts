@@ -31,6 +31,7 @@ export interface Session {
   error_message: string | null;
   can_resume: boolean;
   parent_session_id: string | null;
+  sub_agent_count?: number;
   created_at: string;
   updated_at: string;
   ended_at: string | null;
@@ -105,6 +106,19 @@ export interface SubAgent {
   cache_create_tokens: number;
   started_at: string | null;
   ended_at: string | null;
+}
+
+export interface SubAgentTokenTotals {
+  input: number;
+  output: number;
+  cache_read: number;
+  cache_create: number;
+}
+
+export interface HierarchyBlock {
+  sub_agents: SubAgent[];
+  sub_agent_count: number;
+  total_sub_agent_tokens: SubAgentTokenTotals;
 }
 
 export interface SubAgentUpsert {
@@ -363,6 +377,7 @@ export interface SessionDetailResponse {
   transcript: TranscriptEntry[];
   notifications: Notification[];
   available_actions: string[];
+  hierarchy: HierarchyBlock;
 }
 
 export interface ReportSummary {
