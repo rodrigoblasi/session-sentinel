@@ -1,0 +1,884 @@
+openapi: '3.1.0'
+info:
+  title: Session Sentinel API
+  description: >
+    Control plane for Claude Code agent sessions. Monitors, manages, and
+    brokers interactions between human operators, AI agents, and Claude Code
+    sessions.
+  version: 0.2.0
+  contact:
+    name: Session Sentinel
+    url: https://github.com/rodrigoblasi/session-sentinel
+
+servers:
+  - url: http://localhost:3100
+    description: Local development
+
+components:
+  schemas:
+    Session:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Sentinel session ID (format ss-<ulid>)
+          example: ss-01JQXYZ1234567890ABCDEF
+        claude_session_id:
+          type: string
+          description: Claude Code's internal session UUID
+          example: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+        label:
+          type: ['string', 'null']
+          description: Human-readable label for identification
+          example: fix-auth-test
+        status:
+          $ref: '#/components/schemas/SessionStatus'
+        type:
+          $ref: '#/components/schemas/SessionType'
+        owner:
+          type: ['string', 'null']
+          description: Agent name that owns this session (null for unmanaged)
+          example: my-agent
+        cwd:
+          type: ['string', 'null']
+          description: Working directory
+          example: /home/user/my-project
+        project_name:
+          type: ['string', 'null']
+          description: Project name (auto-discovered from cwd)
+          example: my-project
+        model:
+          type: ['string', 'null']
+          description: Claude model used
+          example: claude-sonnet-4-6
+        effort:
+          type: ['string', 'null']
+          description: Effort level
+          example: high
+        git_branch:
+          type: ['string', 'null']
+          description: Git branch at session start
+          example: feat/auth-fix
+        git_remote:
+          type: ['string', 'null']
+          description: Git remote URL
+        jsonl_path:
+          type: string
+          description: Path to the session's JSONL file
+        pid:
+          type: ['integer', 'null']
+          description: OS process ID (null when not running)
+          example: 12345
+        remote_url:
+          type: ['string', 'null']
+          description: Claude Remote URL for observation
+        last_entrypoint:
+          type: ['string', 'null']
+          description: How the session was last started (e.g. cli, api)
+        input_tokens:
+          type: integer
+          description: Cumulative input tokens across all runs
+        output_tokens:
+          type: integer
+          description: Cumulative output tokens across all runs
+        cache_read_tokens:
+          type: integer
+          description: Cumulative cache read tokens
+        cache_create_tokens:
+          type: integer
+          description: Cumulative cache creation tokens
+        pending_question:
+          type: ['string', 'null']
+          description: Question the session is waiting for (only when status=waiting)
+        last_output:
+          type: ['string', 'null']
+          description: Last text output from the session
+        error_message:
+          type: ['string', 'null']
+          description: Error details (only when status=error)
+        can_resume:
+          type: boolean
+          description: Whether the session can be resumed
+        parent_session_id:
+          type: ['string', 'null']
+          description: Parent session ID (reserved for future use, always null)
+        sub_agent_count:
+          type: integer
+          description: Number of sub-agents spawned by this session
+        created_at:
+          type: string
+          format: date-time
+          description: When the session was first discovered
+        updated_at:
+          type: string
+          format: date-time
+          description: Last activity timestamp
+        ended_at:
+          type: ['string', 'null']
+          format: date-time
+          description: When the session ended (null if still active)
+
+    SessionStatus:
+      type: string
+      enum: [starting, active, waiting, idle, ended, error]
+      description: >
+        starting: process launching. active: producing output.
+        waiting: blocked on user input. idle: alive but no recent activity.
+        ended: process exited. error: something went wrong.
+
+    SessionType:
+      type: string
+      enum: [managed, unmanaged]
+      description: >
+        managed: created/controlled via Sentinel API. unmanaged: user-initiated
+        in terminal, Sentinel only monitors.
+
+    Run:
+      type: object
+      properties:
+        id:
+          type: integer
+        session_id:
+          type: string
+        run_number:
+          type: integer
+          description: Sequential run number within the session
+        jsonl_path:
+          type: string
+        start_type:
+          type: string
+          enum: [startup, resume, compact]
+          description: How this run was initiated
+        type_during_run:
+          $ref: '#/components/schemas/SessionType'
+        owner_during_run:
+          type: ['string', 'null']
+          description: Agent that owned the session during this run
+        model:
+          type: ['string', 'null']
+        effort:
+          type: ['string', 'null']
+        remote_url:
+          type: ['string', 'null']
+        sentinel_managed:
+          type: boolean
+          description: Whether Sentinel managed this run
+        input_tokens:
+          type: integer
+        output_tokens:
+          type: integer
+        cache_read_tokens:
+          type: integer
+        cache_create_tokens:
+          type: integer
+        started_at:
+          type: string
+          format: date-time
+        ended_at:
+          type: ['string', 'null']
+          format: date-time
+
+    SubAgent:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Sub-agent identifier
+          example: sa-explore-abc123
+        session_id:
+          type: string
+        pattern:
+          type: string
+          enum: [regular, compact, side_question]
+          description: How the sub-agent was spawned
+        agent_type:
+          type: ['string', 'null']
+          description: Agent type (e.g. Explore, Plan)
+          example: Explore
+        description:
+          type: ['string', 'null']
+          description: Task description given to the sub-agent
+          example: Search for auth middleware
+        jsonl_path:
+          type: string
+        input_tokens:
+          type: integer
+        output_tokens:
+          type: integer
+        cache_read_tokens:
+          type: integer
+        cache_create_tokens:
+          type: integer
+        started_at:
+          type: ['string', 'null']
+          format: date-time
+        ended_at:
+          type: ['string', 'null']
+          format: date-time
+
+    SubAgentTokenTotals:
+      type: object
+      properties:
+        input:
+          type: integer
+        output:
+          type: integer
+        cache_read:
+          type: integer
+        cache_create:
+          type: integer
+
+    HierarchyBlock:
+      type: object
+      properties:
+        sub_agents:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubAgent'
+          description: Sub-agents ordered by started_at DESC
+        sub_agent_count:
+          type: integer
+        total_sub_agent_tokens:
+          $ref: '#/components/schemas/SubAgentTokenTotals'
+
+    SessionEvent:
+      type: object
+      properties:
+        id:
+          type: integer
+        session_id:
+          type: string
+        event_type:
+          type: string
+          description: Event type (e.g. status_change, session_created, housekeep)
+          example: status_change
+        from_status:
+          type: ['string', 'null']
+        to_status:
+          type: ['string', 'null']
+        actor:
+          type: string
+          description: Who triggered the event (e.g. monitor, manager, api)
+          example: monitor
+        detail:
+          type: ['string', 'null']
+          contentMediaType: application/json
+          description: >
+            JSON-encoded detail object. Consumers must JSON.parse() this
+            field to access structured data.
+        created_at:
+          type: string
+          format: date-time
+
+    TranscriptEntry:
+      type: object
+      properties:
+        id:
+          type: integer
+        session_id:
+          type: string
+        run_id:
+          type: ['integer', 'null']
+        turn:
+          type: integer
+        role:
+          type: string
+          description: Message role (user or assistant)
+        content:
+          type: string
+        tools_used:
+          type: ['string', 'null']
+          description: JSON-encoded array of tool names
+        input_tokens:
+          type: integer
+        output_tokens:
+          type: integer
+        cache_read_tokens:
+          type: integer
+        cache_create_tokens:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+
+    Notification:
+      type: object
+      properties:
+        id:
+          type: integer
+        session_id:
+          type: string
+        channel:
+          type: string
+          description: Delivery channel (e.g. discord_owner, discord_sentinel_log)
+          example: discord_owner
+        destination:
+          type: string
+          description: Where the notification was sent
+          example: '#my-agent'
+        trigger:
+          type: string
+          description: What triggered the notification (waiting or error)
+          enum: [waiting, error]
+        payload:
+          type: string
+          contentMediaType: application/json
+          description: >
+            JSON-encoded NotificationPayload. Consumers must JSON.parse()
+            this field to access structured notification data.
+        delivered:
+          type: boolean
+          description: Whether delivery succeeded
+        created_at:
+          type: string
+          format: date-time
+
+    Project:
+      type: object
+      properties:
+        name:
+          type: string
+          example: my-project
+        cwd:
+          type: string
+          example: /home/user/my-project
+        discovered_at:
+          type: string
+          format: date-time
+        last_session_at:
+          type: ['string', 'null']
+          format: date-time
+        session_count:
+          type: integer
+        alias:
+          type: ['string', 'null']
+
+    ReportSummary:
+      type: object
+      properties:
+        total_sessions:
+          type: integer
+        active:
+          type: integer
+        waiting:
+          type: integer
+        idle:
+          type: integer
+        ended_today:
+          type: integer
+        errors_today:
+          type: integer
+        total_tokens_today:
+          type: integer
+
+    ProjectBreakdown:
+      type: object
+      properties:
+        active:
+          type: integer
+        waiting:
+          type: integer
+        ended_today:
+          type: integer
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+      required: [error]
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      description: Check if Sentinel is running.
+      operationId: getHealth
+      tags: [Health]
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  uptime:
+                    type: number
+                    description: Seconds since server start
+                    example: 3642.51
+                  version:
+                    type: string
+                    example: 0.2.0
+                  timestamp:
+                    type: string
+                    format: date-time
+
+  /sessions:
+    get:
+      summary: List sessions
+      description: List sessions with optional filters.
+      operationId: listSessions
+      tags: [Sessions]
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/SessionStatus'
+        - name: type
+          in: query
+          schema:
+            $ref: '#/components/schemas/SessionType'
+        - name: owner
+          in: query
+          schema:
+            type: string
+          description: Filter by owner name
+        - name: project
+          in: query
+          schema:
+            type: string
+          description: Filter by project name
+        - name: active
+          in: query
+          schema:
+            type: string
+            enum: ['true']
+          description: Set to "true" to get only non-ended sessions
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+          description: Max number of results
+      responses:
+        '200':
+          description: List of sessions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Session'
+
+    post:
+      summary: Create a managed session
+      description: >
+        Create a new managed session. Requires the Session Manager to be
+        running. Either project or cwd must be provided.
+      operationId: createSession
+      tags: [Session Lifecycle]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [prompt, owner]
+              properties:
+                prompt:
+                  type: string
+                  description: Initial task/prompt for the session
+                  example: Fix the failing test in src/auth.ts
+                owner:
+                  type: string
+                  description: Agent name that owns this session
+                  example: my-agent
+                project:
+                  type: string
+                  description: Project name (resolved via registry)
+                cwd:
+                  type: string
+                  description: Working directory (absolute path)
+                  example: /home/user/my-project
+                label:
+                  type: string
+                  description: Human-readable label
+                  example: fix-auth-test
+                model:
+                  type: string
+                  description: Model to use
+                  example: claude-sonnet-4-6
+                effort:
+                  type: string
+                  description: Effort level
+                  example: high
+                allowedTools:
+                  type: array
+                  items:
+                    type: string
+                  description: List of allowed tool names
+                systemPrompt:
+                  type: string
+                  description: Custom system prompt
+                maxBudgetUsd:
+                  type: number
+                  description: Maximum spend for this session
+      responses:
+        '201':
+          description: Session created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+        '400':
+          description: Invalid request (missing fields or invalid project)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Session Manager not available
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /sessions/{id}:
+    get:
+      summary: Get session detail
+      description: >
+        Full session detail with runs, events, transcript, notifications,
+        available actions, and sub-agent hierarchy. Events are limited to the 50
+        most recent.
+      operationId: getSession
+      tags: [Sessions]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Session ID (e.g. ss-01JQXYZ...)
+      responses:
+        '200':
+          description: Full session detail
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  session:
+                    $ref: '#/components/schemas/Session'
+                  runs:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Run'
+                  events:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SessionEvent'
+                    description: Up to 50 most recent events
+                  transcript:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TranscriptEntry'
+                  notifications:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Notification'
+                  available_actions:
+                    type: array
+                    items:
+                      type: string
+                      enum: [send_message, terminate, resume]
+                    description: >
+                      Lifecycle actions valid for the session's current state and
+                      type. Unlisted actions will fail. Execution may still return
+                      4xx if required fields are missing or the Session Manager is
+                      unavailable.
+                  hierarchy:
+                    $ref: '#/components/schemas/HierarchyBlock'
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      summary: Terminate a session
+      description: Terminate a running managed session.
+      operationId: terminateSession
+      tags: [Session Lifecycle]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Session terminated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: terminated
+        '400':
+          description: Session cannot be terminated in its current state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Session Manager not available
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /sessions/{id}/transcript:
+    get:
+      summary: Get session transcript
+      description: Session transcript entries.
+      operationId: getTranscript
+      tags: [Sessions]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+          description: Max number of transcript entries
+      responses:
+        '200':
+          description: Transcript entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TranscriptEntry'
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /sessions/{id}/resume:
+    post:
+      summary: Resume a session
+      description: >
+        Resume an ended, errored, or idle session. The session must have
+        can_resume: true.
+      operationId: resumeSession
+      tags: [Session Lifecycle]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [prompt, owner]
+              properties:
+                prompt:
+                  type: string
+                  description: New prompt for the resumed session
+                  example: Continue — the config change is deployed, retry the test
+                owner:
+                  type: string
+                  description: Agent resuming (becomes new owner)
+                  example: my-agent
+                model:
+                  type: string
+                  description: Override model for this run
+                effort:
+                  type: string
+                  description: Override effort for this run
+      responses:
+        '200':
+          description: Session resumed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+        '400':
+          description: Invalid request or session not resumable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Session Manager not available
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /sessions/{id}/message:
+    post:
+      summary: Send a message to a session
+      description: >
+        Send a message to a running managed session. Use this to answer
+        questions when a session is waiting.
+      operationId: sendMessage
+      tags: [Session Lifecycle]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [message]
+              properties:
+                message:
+                  type: string
+                  description: Message to send to the session
+                  example: Yes, proceed with the refactor
+      responses:
+        '202':
+          description: Message sent
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: message_sent
+        '400':
+          description: Invalid request or session not in a messageable state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Session Manager not available
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /report:
+    get:
+      summary: Environment report
+      description: >
+        Environment snapshot — the single best endpoint for agents to understand
+        the current state. Returns summary stats, sessions needing attention,
+        active sessions, recent events, and per-project breakdown.
+      operationId: getReport
+      tags: [Report]
+      responses:
+        '200':
+          description: Environment snapshot
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  summary:
+                    $ref: '#/components/schemas/ReportSummary'
+                  needs_attention:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Session'
+                    description: Sessions with status waiting or error
+                  active_sessions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Session'
+                  recent_events:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SessionEvent'
+                    description: 20 most recent events
+                  by_project:
+                    type: object
+                    additionalProperties:
+                      $ref: '#/components/schemas/ProjectBreakdown'
+                    description: Per-project session counts
+
+  /events:
+    get:
+      summary: List events
+      description: Global event log with optional filters.
+      operationId: listEvents
+      tags: [Events]
+      parameters:
+        - name: session_id
+          in: query
+          schema:
+            type: string
+          description: Filter events for a specific session
+        - name: event_type
+          in: query
+          schema:
+            type: string
+          description: Filter by event type (e.g. status_change, session_created, housekeep)
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+          description: Max number of results
+      responses:
+        '200':
+          description: Event log
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SessionEvent'
+
+  /projects:
+    get:
+      summary: List projects
+      description: >
+        List known projects. Projects are auto-discovered from session working
+        directories.
+      operationId: listProjects
+      tags: [Projects]
+      responses:
+        '200':
+          description: Known projects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Project'

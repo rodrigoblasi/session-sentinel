@@ -3,6 +3,7 @@ import cors from '@fastify/cors';
 import websocket from '@fastify/websocket';
 import { registerRoutes } from './routes.js';
 import { registerWebSocket } from './websocket.js';
+import { registerDocs } from './docs.js';
 import type { SessionManager } from '../manager/index.js';
 import type { EventEmitter } from 'node:events';
 
@@ -29,6 +30,7 @@ export function buildServer(config: ServerConfig): FastifyInstance {
   });
 
   registerRoutes(app, config.manager);
+  app.register(registerDocs);
 
   return app;
 }
