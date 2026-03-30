@@ -46,7 +46,7 @@ Phase 3 delivers an operator dashboard for real-time session management and adva
 
 **Environment configuration.** API base URL via `PUBLIC_API_URL` env var (defaults to `http://localhost:3100`).
 
-**CORS.** Fastify already has `@fastify/cors`. Must allow `http://localhost:3002` and LAN IPs for remote access.
+**CORS.** Fastify already has `@fastify/cors`. Origins configured via `CORS_ORIGINS` env var (comma-separated, e.g., `http://localhost:3002,http://192.168.1.12:3002`). Defaults to `http://localhost:3002`.
 
 ---
 
@@ -74,7 +74,7 @@ The main view. All sessions in a sortable, filterable table with real-time updat
 **Row styling:**
 - Alternating row backgrounds for readability
 - Selected row highlighted (opens Level 2 side panel)
-- Sub-agents indented with `↳` prefix and reduced opacity
+- Sub-agents indented with `↳` prefix and reduced opacity (driven by `parent_session_id` field in list response, no extra API calls)
 - Pending questions shown as expandable sub-row under waiting sessions
 - Error messages shown as expandable sub-row under error sessions
 - Ended sessions use muted text colors
@@ -82,7 +82,7 @@ The main view. All sessions in a sortable, filterable table with real-time updat
 **Filters:**
 - Pill tabs: All, Active, Waiting, Managed, Unmanaged
 - Free-text search: label, id, branch
-- Session count display (filtered / total)
+- Session count display (matching filter / total visible — not all-time)
 
 **Sorting:** All columns sortable. Default: status priority (waiting → active → idle → ended).
 
@@ -159,7 +159,7 @@ Google Midnight-inspired palette. Not pure black — deep blue-gray tones.
 | `--bg-surface` | `#202038` | Cards, panels, top bar |
 | `--bg-elevated` | `#2a2a45` | Hover states, inputs, dropdowns |
 | `--bg-hover` | `#32325a` | Row hover, interactive elements |
-| `--bg-row-alt` | `#1e1e35` | Alternating table rows |
+| `--bg-row-alt` | `#1e1e35` | Alternating table rows (verify contrast with --text-secondary meets ~4.5:1) |
 | `--border` | `#3a3a5c` | Strong borders |
 | `--border-subtle` | `#2e2e4a` | Subtle separators |
 | `--text-primary` | `#e8eaed` | Primary text |
@@ -193,11 +193,21 @@ The notification bell icon (🔔) in each table row provides at-a-glance status 
 Opens a popover with:
 - **Toggle:** Enable/disable notifications for this session
 - **Deliver to:** Dropdown to reassign to different agent (jarvis, friday, operator, etc.)
-- **Trigger events:** Chip toggles for which events fire notifications (waiting, error, idle, ended)
-- **Channels:** Read-only display (discord_owner, sentinel-log) — configured by API subscription
-- **Footer:** Subscription timestamp and source
+- **Trigger events:** Read-only display of current triggers: `waiting` and `error` (the only two supported by the bridge in Sprint 3)
+- **Channels:** Read-only display (discord_owner, sentinel-log) — automatic dual delivery
+- **Footer:** Session type and owner info
 
 ### API support required
+
+The current notification model is automatic — the bridge fires on status changes for managed sessions with an owner. There is no subscription table. To support dashboard control, Sprint 3 adds two columns to the `sessions` table:
+
+```sql
+ALTER TABLE sessions ADD COLUMN notifications_enabled INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE sessions ADD COLUMN notifications_target_override TEXT;
+```
+
+- `notifications_enabled`: when false, the bridge skips this session. Default true (preserves current behavior).
+- `notifications_target_override`: when set, the bridge delivers to this agent instead of `session.owner`. Null = use owner.
 
 New endpoint: `PATCH /sessions/:id/notifications`
 
@@ -205,12 +215,11 @@ Request body:
 ```json
 {
   "enabled": true,
-  "target_agent": "jarvis",
-  "trigger_events": ["waiting", "error"]
+  "target_agent": "jarvis"
 }
 ```
 
-This modifies the existing notification subscription for the session. If no subscription exists, returns 404 (must be created via `POST /sessions/:id/watch` first).
+The bridge checks `notifications_enabled` before firing and uses `notifications_target_override ?? session.owner` as the delivery target.
 
 ---
 
@@ -223,7 +232,7 @@ Shows when Claude Code is actively processing. Uses the same sparkle animation a
 | Visual | State | Data source | Meaning |
 |--------|-------|-------------|---------|
 | Blue sparkles ✦✦✦ | Processing | Last JSONL event (tool_call or assistant output) within 30s | Claude is working. Don't interrupt. |
-| Purple sparkles ✦✦✦ + "N agents" | Sub-agents active | sub_agents table has active children | Multiple processes running |
+| Purple sparkles ✦✦✦ + "N agents" | Sub-agents active | sub_agents table: `ended_at IS NULL` for this session | Multiple processes running |
 | (nothing) | Waiting/Idle/Ended | Session status | Not processing |
 
 ### API support required
@@ -232,7 +241,7 @@ New field in session API response: `activity_state: 'processing' | 'subagents' |
 
 Derived server-side from:
 - `processing`: last JSONL event timestamp < 30 seconds ago
-- `subagents`: session has children with status=active in sub_agents table
+- `subagents`: session has children in sub_agents table where `ended_at IS NULL`
 - `null`: all other states
 
 The WebSocket already pushes `session_updated` events, so sparkles update in real-time.
@@ -340,4 +349,6 @@ Based on Sprint 3 operational feedback:
 - systemd unit: `sentinel-dashboard.service` alongside existing `sentinel.service`
 
 ### CORS update
-- Add `http://localhost:3002` and LAN IP origins to Fastify CORS config
+- Configure via `CORS_ORIGINS` env var (comma-separated)
+- Default: `http://localhost:3002`
+- Production: include LAN IP (e.g., `http://localhost:3002,http://192.168.1.12:3002`)
