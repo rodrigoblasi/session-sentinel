@@ -19,7 +19,10 @@ export function buildServer(config: ServerConfig): FastifyInstance {
     logger: config.logger ?? false,
   });
 
-  app.register(cors, { origin: true });
+  const corsOrigins = process.env.CORS_ORIGINS
+    ? process.env.CORS_ORIGINS.split(',').map(s => s.trim())
+    : ['http://localhost:3002'];
+  app.register(cors, { origin: corsOrigins });
 
   // WebSocket plugin must be registered before WS routes so its onRoute hook
   // intercepts them. We use app.register to create an encapsulated scope where
