@@ -101,7 +101,9 @@ export function listSessions(filters: SessionFilters = {}): Session[] {
 
   return getDb()
     .prepare(
-      `SELECT s.*, (SELECT COUNT(*) FROM sub_agents WHERE session_id = s.id) AS sub_agent_count
+      `SELECT s.*,
+        (SELECT COUNT(*) FROM sub_agents WHERE session_id = s.id) AS sub_agent_count,
+        (SELECT COUNT(*) FROM sub_agents WHERE session_id = s.id AND ended_at IS NULL) AS active_sub_agent_count
        FROM sessions s ${where} ORDER BY s.updated_at DESC ${limit}`,
     )
     .all(...params) as Session[];
