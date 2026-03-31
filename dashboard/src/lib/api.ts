@@ -64,5 +64,5 @@ export function updateNotifications(
 // --- WebSocket ---
 
 export function getWsUrl(): string {
-  return base.replace(/^http/, 'ws') + '/ws';
+  return base.replace(/^https/, 'wss').replace(/^http(?!s)/, 'ws') + '/ws';
 }

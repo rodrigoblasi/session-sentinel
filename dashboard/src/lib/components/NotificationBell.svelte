@@ -6,6 +6,7 @@
   let showPopover = $state(false);
   let targetAgent = $state(session.notifications_target_override ?? '');
   let error = $state('');
+  let saving = $state(false);
 
   function bellState() {
     if (session.type === 'unmanaged') return 'na';
@@ -15,17 +16,23 @@
   }
 
   async function toggleEnabled() {
+    if (saving) return;
     error = '';
+    saving = true;
     try {
       await updateNotifications(session.id, { enabled: !session.notifications_enabled });
       onUpdate?.();
     } catch (err) {
       error = err instanceof Error ? err.message : 'Failed';
+    } finally {
+      saving = false;
     }
   }
 
   async function saveTarget() {
+    if (saving) return;
     error = '';
+    saving = true;
     try {
       await updateNotifications(session.id, {
         target_agent: targetAgent.trim() || null,
@@ -33,6 +40,8 @@
       onUpdate?.();
     } catch (err) {
       error = err instanceof Error ? err.message : 'Failed';
+    } finally {
+      saving = false;
     }
   }
 
@@ -60,8 +69,8 @@
 
       <label class="toggle-row">
         <span>Enabled</span>
-        <button class="toggle-btn" class:on={session.notifications_enabled} onclick={toggleEnabled}>
-          {session.notifications_enabled ? 'ON' : 'OFF'}
+        <button class="toggle-btn" class:on={session.notifications_enabled} onclick={toggleEnabled} disabled={saving}>
+          {saving ? '...' : session.notifications_enabled ? 'ON' : 'OFF'}
         </button>
       </label>
 
@@ -69,7 +78,7 @@
         <span>Deliver to</span>
         <div class="input-row">
           <input type="text" bind:value={targetAgent} placeholder={session.owner ?? 'owner'} />
-          <button class="save-btn" onclick={saveTarget}>Save</button>
+          <button class="save-btn" onclick={saveTarget} disabled={saving}>{saving ? '...' : 'Save'}</button>
         </div>
       </label>
 

@@ -92,7 +92,13 @@
     return rows;
   });
 
-  let selected = $derived(data.sessions?.find(s => s.id === selectedId) ?? null);
+  // Keep last known session to avoid abrupt panel closure when session leaves the list
+  let lastSelected = $state(null);
+  let selected = $derived.by(() => {
+    const found = data.sessions?.find(s => s.id === selectedId) ?? null;
+    if (found) lastSelected = found;
+    return found ?? (selectedId ? lastSelected : null);
+  });
 
   // --- Column header click ---
   function toggleSort(col) {
