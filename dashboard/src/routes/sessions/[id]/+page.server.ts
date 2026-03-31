@@ -1,15 +1,13 @@
-import type { PageServerLoad } from './$types';
-import { getSessionById, getRunsForSession, getEventsForSession, getTranscriptForSession, getNotificationsForSession } from '$lib/db';
+import { getSession } from '$lib/api.js';
 import { error } from '@sveltejs/kit';
 
-export const load: PageServerLoad = async ({ params }) => {
-  const session = getSessionById(params.id);
-  if (!session) throw error(404, 'Session not found');
-
-  const runs = getRunsForSession(params.id);
-  const events = getEventsForSession(params.id);
-  const transcript = getTranscriptForSession(params.id);
-  const notifications = getNotificationsForSession(params.id);
-
-  return { session, runs, events, transcript, notifications };
-};
+export async function load({ params }) {
+  try {
+    return await getSession(params.id);
+  } catch (err: any) {
+    if (err.message?.includes('404') || err.message?.includes('not found')) {
+      error(404, 'Session not found');
+    }
+    throw err;
+  }
+}
