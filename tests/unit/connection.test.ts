@@ -33,7 +33,7 @@ describe('initDb', () => {
     expect(tableNames).toContain('_meta');
   });
 
-  it('sets schema version to 1', () => {
+  it('sets schema version to 2', () => {
     dbPath = path.join(os.tmpdir(), `sentinel-test-${Date.now()}.db`);
     const db = initDb(dbPath);
 
@@ -41,7 +41,7 @@ describe('initDb', () => {
       .prepare("SELECT value FROM _meta WHERE key = 'schema_version'")
       .get() as { value: string } | undefined;
 
-    expect(row?.value).toBe('1');
+    expect(row?.value).toBe('2');
   });
 
   it('is idempotent — calling twice does not error', () => {
@@ -54,6 +54,6 @@ describe('initDb', () => {
       .prepare("SELECT value FROM _meta WHERE key = 'schema_version'")
       .get() as { value: string } | undefined;
 
-    expect(row?.value).toBe('1');
+    expect(row?.value).toBe('2');
   });
 });

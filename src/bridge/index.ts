@@ -34,11 +34,13 @@ export class AgentBridge extends EventEmitter {
     if (session.type !== 'managed') return;
     if (!NOTIFICATION_TRIGGERS.has(to)) return;
     if (!session.owner) return;
+    if (!session.notifications_enabled) return;
 
     const payload = this.buildPayload(session, to);
+    const targetAgent = session.notifications_target_override ?? session.owner;
 
-    // Dual delivery: owner thread + sentinel-log
-    this.deliver(session, NOTIFICATION_CHANNELS.OWNER_THREAD, `#${session.owner}`, to, payload);
+    // Dual delivery: target agent thread + sentinel-log
+    this.deliver(session, NOTIFICATION_CHANNELS.OWNER_THREAD, `#${targetAgent}`, to, payload);
     this.deliver(session, NOTIFICATION_CHANNELS.SENTINEL_LOG, '#sentinel-log', to, payload);
   }
 

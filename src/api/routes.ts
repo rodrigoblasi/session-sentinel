@@ -3,6 +3,21 @@ import * as queries from '../db/queries.js';
 import type { SessionManager } from '../manager/index.js';
 import type { SessionFilters, EventFilters, HierarchyBlock } from '../shared/types.js';
 
+function enrichWithActivityState<T extends { status: string; updated_at: string; active_sub_agent_count?: number }>(session: T): T & { activity_state: 'processing' | 'subagents' | null } {
+  let activity_state: 'processing' | 'subagents' | null = null;
+
+  if (session.active_sub_agent_count && session.active_sub_agent_count > 0) {
+    activity_state = 'subagents';
+  } else if (session.status === 'active' && session.updated_at) {
+    const updatedAt = new Date(session.updated_at + 'Z').getTime();
+    if (Date.now() - updatedAt < 30_000) {
+      activity_state = 'processing';
+    }
+  }
+
+  return { ...session, activity_state };
+}
+
 export function registerRoutes(app: FastifyInstance, manager: SessionManager | null): void {
 
   // --- Health ---
@@ -27,7 +42,8 @@ export function registerRoutes(app: FastifyInstance, manager: SessionManager | n
     if (query.active === 'true') filters.active = true;
     if (query.limit) filters.limit = parseInt(query.limit, 10);
 
-    return queries.listSessions(filters);
+    const sessions = queries.listSessions(filters);
+    return sessions.map(enrichWithActivityState);
   });
 
   app.get('/sessions/:id', async (request, reply) => {
@@ -49,7 +65,12 @@ export function registerRoutes(app: FastifyInstance, manager: SessionManager | n
       total_sub_agent_tokens: queries.getSubAgentTokenTotals(id),
     };
 
-    return { session, runs, events, transcript, notifications, available_actions, hierarchy };
+    const enrichedSession = enrichWithActivityState({
+      ...session,
+      active_sub_agent_count: queries.getSubAgents(id).filter(sa => !sa.ended_at).length,
+    });
+
+    return { session: enrichedSession, runs, events, transcript, notifications, available_actions, hierarchy };
   });
 
   app.get('/sessions/:id/transcript', async (request, reply) => {
@@ -60,6 +81,26 @@ export function registerRoutes(app: FastifyInstance, manager: SessionManager | n
 
     const limit = query.limit ? parseInt(query.limit, 10) : undefined;
     return queries.getTranscript(id, limit);
+  });
+
+  // --- Notification settings ---
+
+  app.patch('/sessions/:id/notifications', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const body = request.body as Record<string, unknown> | null;
+
+    if (!body || (body.enabled === undefined && body.target_agent === undefined)) {
+      return reply.status(400).send({ error: 'At least one of enabled or target_agent is required' });
+    }
+
+    const updated = queries.updateNotificationSettings(id, {
+      enabled: body.enabled as boolean | undefined,
+      target_agent: body.target_agent as string | null | undefined,
+    });
+
+    if (!updated) return reply.status(404).send({ error: 'Session not found' });
+
+    return queries.getSession(id);
   });
 
   // --- Session lifecycle (requires Manager) ---

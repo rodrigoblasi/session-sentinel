@@ -22,6 +22,16 @@ export function initDb(dbPath: string): Database.Database {
   const schema = fs.readFileSync(schemaPath, 'utf-8');
   db.exec(schema);
 
+  // Migrate v1 → v2: notification columns
+  const version = (db.prepare("SELECT value FROM _meta WHERE key = 'schema_version'").get() as { value: string })?.value;
+  if (version === '1') {
+    db.exec(`
+      ALTER TABLE sessions ADD COLUMN notifications_enabled INTEGER NOT NULL DEFAULT 1;
+      ALTER TABLE sessions ADD COLUMN notifications_target_override TEXT;
+    `);
+    db.prepare("UPDATE _meta SET value = '2' WHERE key = 'schema_version'").run();
+  }
+
   return db;
 }
 

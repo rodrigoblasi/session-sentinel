@@ -101,7 +101,9 @@ export function listSessions(filters: SessionFilters = {}): Session[] {
 
   return getDb()
     .prepare(
-      `SELECT s.*, (SELECT COUNT(*) FROM sub_agents WHERE session_id = s.id) AS sub_agent_count
+      `SELECT s.*,
+        (SELECT COUNT(*) FROM sub_agents WHERE session_id = s.id) AS sub_agent_count,
+        (SELECT COUNT(*) FROM sub_agents WHERE session_id = s.id AND ended_at IS NULL) AS active_sub_agent_count
        FROM sessions s ${where} ORDER BY s.updated_at DESC ${limit}`,
     )
     .all(...params) as Session[];
@@ -400,6 +402,35 @@ export function upsertProject(name: string, cwd: string): void {
       session_count = projects.session_count + 1,
       last_session_at = datetime('now')
   `).run(name, cwd);
+}
+
+// --- Notification settings (Sprint 3) ---
+
+export interface NotificationSettingsInput {
+  enabled?: boolean;
+  target_agent?: string | null;
+}
+
+export function updateNotificationSettings(id: string, settings: NotificationSettingsInput): boolean {
+  const db = getDb();
+  const session = db.prepare('SELECT id FROM sessions WHERE id = ?').get(id);
+  if (!session) return false;
+
+  const sets: string[] = ["updated_at = datetime('now')"];
+  const params: unknown[] = [];
+
+  if (settings.enabled !== undefined) {
+    sets.push('notifications_enabled = ?');
+    params.push(settings.enabled ? 1 : 0);
+  }
+  if (settings.target_agent !== undefined) {
+    sets.push('notifications_target_override = ?');
+    params.push(settings.target_agent);
+  }
+
+  params.push(id);
+  db.prepare(`UPDATE sessions SET ${sets.join(', ')} WHERE id = ?`).run(...params);
+  return true;
 }
 
 // --- Managed session helpers (Sprint 2) ---

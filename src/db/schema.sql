@@ -1,11 +1,11 @@
--- Session Sentinel schema v1
+-- Session Sentinel schema v2
 
 CREATE TABLE IF NOT EXISTS _meta (
   key   TEXT PRIMARY KEY,
   value TEXT NOT NULL
 );
 
-INSERT OR IGNORE INTO _meta (key, value) VALUES ('schema_version', '1');
+INSERT OR IGNORE INTO _meta (key, value) VALUES ('schema_version', '2');
 
 CREATE TABLE IF NOT EXISTS sessions (
   id                  TEXT PRIMARY KEY,
@@ -33,6 +33,8 @@ CREATE TABLE IF NOT EXISTS sessions (
   error_message       TEXT,
   can_resume          INTEGER NOT NULL DEFAULT 1,
   parent_session_id   TEXT,
+  notifications_enabled     INTEGER NOT NULL DEFAULT 1,
+  notifications_target_override TEXT,
   created_at          TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at          TEXT NOT NULL DEFAULT (datetime('now')),
   ended_at            TEXT

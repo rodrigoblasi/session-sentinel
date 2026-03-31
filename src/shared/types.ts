@@ -31,6 +31,10 @@ export interface Session {
   error_message: string | null;
   can_resume: boolean;
   parent_session_id: string | null;
+  notifications_enabled: boolean;
+  notifications_target_override: string | null;
+  activity_state?: 'processing' | 'subagents' | null;
+  active_sub_agent_count?: number;
   sub_agent_count?: number;
   created_at: string;
   updated_at: string;
