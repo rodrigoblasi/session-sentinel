@@ -1,0 +1,31 @@
+[Unit]
+Description=Session Sentinel Dashboard (SvelteKit)
+After=network.target sentinel.service
+Wants=sentinel.service
+
+[Service]
+Type=simple
+User=blasi
+WorkingDirectory=/home/blasi/session-sentinel/dashboard
+ExecStart=/usr/bin/node build/index.js
+Environment=PORT=3002
+Environment=PUBLIC_API_URL=http://localhost:3100
+# For LAN access: set PUBLIC_API_URL=http://192.168.1.12:3100
+# and set CORS_ORIGINS=http://192.168.1.12:3002 in sentinel.service
+Restart=on-failure
+RestartSec=5
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=sentinel-dashboard
+
+# Security
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/home/blasi/session-sentinel/dashboard
+ProtectHome=tmpfs
+BindPaths=/home/blasi
+
+[Install]
+WantedBy=multi-user.target
