@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
   import { getSession, terminateSession, sendMessage } from '$lib/api.js';
   import { formatTokens, formatDuration, shortenModel, timeAgo } from '$lib/utils.js';
   import type { Session, SessionDetailResponse } from '$lib/types.js';
@@ -15,21 +14,21 @@
   let actionError = $state('');
   let messageSuccess = $state(false);
 
-  onMount(() => loadDetail());
-
-  async function loadDetail() {
+  // Reload when session changes (abort guard prevents stale data on fast switches)
+  $effect(() => {
+    const targetId = session.id;
     loading = true;
     actionError = '';
-    try {
-      detail = await getSession(session.id);
-    } catch { /* ignore */ }
-    loading = false;
-  }
-
-  // Reload when session changes
-  $effect(() => {
-    session.id;
-    loadDetail();
+    getSession(targetId).then((res) => {
+      if (session.id === targetId) {
+        detail = res;
+        loading = false;
+      }
+    }).catch(() => {
+      if (session.id === targetId) {
+        loading = false;
+      }
+    });
   });
 
   async function handleTerminate() {

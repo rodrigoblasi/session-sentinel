@@ -12,6 +12,7 @@
   let messageText = $state('');
   let showConfirm = $state(false);
   let actionError = $state('');
+  let messageSuccess = $state(false);
 
   let session = $derived(data.session);
   let totalTokens = $derived(session.input_tokens + session.output_tokens);
@@ -30,9 +31,12 @@
   async function handleSendMessage() {
     if (!messageText.trim()) return;
     actionError = '';
+    messageSuccess = false;
     try {
       await sendMessage(session.id, messageText.trim());
       messageText = '';
+      messageSuccess = true;
+      setTimeout(() => messageSuccess = false, 2000);
     } catch (err: unknown) {
       actionError = err instanceof Error ? err.message : 'Failed to send message';
     }
@@ -81,6 +85,9 @@
         <div class="inline-message">
           <input type="text" bind:value={messageText} placeholder="Send message..." onkeydown={(e) => e.key === 'Enter' && handleSendMessage()} />
           <button class="btn primary" onclick={handleSendMessage}>Send</button>
+          {#if messageSuccess}
+            <span class="msg-ok">Sent</span>
+          {/if}
         </div>
       {/if}
 
@@ -289,6 +296,11 @@
   .action-error {
     font-size: 12px;
     color: var(--accent-red);
+  }
+
+  .msg-ok {
+    font-size: 12px;
+    color: var(--accent-green);
   }
 
   .stats-bar {
