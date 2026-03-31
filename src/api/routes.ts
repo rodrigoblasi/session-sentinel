@@ -62,6 +62,26 @@ export function registerRoutes(app: FastifyInstance, manager: SessionManager | n
     return queries.getTranscript(id, limit);
   });
 
+  // --- Notification settings ---
+
+  app.patch('/sessions/:id/notifications', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const body = request.body as Record<string, unknown> | null;
+
+    if (!body || (body.enabled === undefined && body.target_agent === undefined)) {
+      return reply.status(400).send({ error: 'At least one of enabled or target_agent is required' });
+    }
+
+    const updated = queries.updateNotificationSettings(id, {
+      enabled: body.enabled as boolean | undefined,
+      target_agent: body.target_agent as string | null | undefined,
+    });
+
+    if (!updated) return reply.status(404).send({ error: 'Session not found' });
+
+    return queries.getSession(id);
+  });
+
   // --- Session lifecycle (requires Manager) ---
 
   app.post('/sessions', async (request, reply) => {

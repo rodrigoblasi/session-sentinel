@@ -102,6 +102,18 @@ components:
         parent_session_id:
           type: ['string', 'null']
           description: Parent session ID (reserved for future use, always null)
+        notifications_enabled:
+          type: boolean
+          description: Whether notifications are enabled for this session
+        notifications_target_override:
+          type: string
+          nullable: true
+          description: Agent to deliver notifications to (overrides session owner)
+        activity_state:
+          type: string
+          nullable: true
+          enum: [processing, subagents]
+          description: Current activity indicator state
         sub_agent_count:
           type: integer
           description: Number of sub-agents spawned by this session
@@ -668,6 +680,51 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/TranscriptEntry'
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /sessions/{id}/notifications:
+    patch:
+      operationId: updateNotificationSettings
+      summary: Update notification settings for a session
+      tags: [Sessions]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                enabled:
+                  type: boolean
+                  description: Enable or disable notifications
+                target_agent:
+                  type: string
+                  nullable: true
+                  description: Override notification target agent (null to use session owner)
+      responses:
+        '200':
+          description: Updated session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+        '400':
+          description: Bad request — body must include at least one of enabled or target_agent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '404':
           description: Session not found
           content:

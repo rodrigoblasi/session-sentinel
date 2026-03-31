@@ -402,6 +402,35 @@ export function upsertProject(name: string, cwd: string): void {
   `).run(name, cwd);
 }
 
+// --- Notification settings (Sprint 3) ---
+
+export interface NotificationSettingsInput {
+  enabled?: boolean;
+  target_agent?: string | null;
+}
+
+export function updateNotificationSettings(id: string, settings: NotificationSettingsInput): boolean {
+  const db = getDb();
+  const session = db.prepare('SELECT id FROM sessions WHERE id = ?').get(id);
+  if (!session) return false;
+
+  const sets: string[] = ["updated_at = datetime('now')"];
+  const params: unknown[] = [];
+
+  if (settings.enabled !== undefined) {
+    sets.push('notifications_enabled = ?');
+    params.push(settings.enabled ? 1 : 0);
+  }
+  if (settings.target_agent !== undefined) {
+    sets.push('notifications_target_override = ?');
+    params.push(settings.target_agent);
+  }
+
+  params.push(id);
+  db.prepare(`UPDATE sessions SET ${sets.join(', ')} WHERE id = ?`).run(...params);
+  return true;
+}
+
 // --- Managed session helpers (Sprint 2) ---
 
 export function updateSessionOwner(id: string, owner: string): void {
