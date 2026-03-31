@@ -94,9 +94,12 @@
 
   // Keep last known session to avoid abrupt panel closure when session leaves the list
   let lastSelected = $state(null);
-  let selected = $derived.by(() => {
+  $effect(() => {
     const found = data.sessions?.find(s => s.id === selectedId) ?? null;
     if (found) lastSelected = found;
+  });
+  let selected = $derived.by(() => {
+    const found = data.sessions?.find(s => s.id === selectedId) ?? null;
     return found ?? (selectedId ? lastSelected : null);
   });
 
